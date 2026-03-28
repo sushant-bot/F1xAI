@@ -17,10 +17,13 @@ from app.models.race import (
     SimulationResponse,
     SimulationRequest,
     EnergyPhase,
+    TrackComparisonResponse,
+    TrendPredictionWithDriversResponse,
 )
 from app.services.race_service import RaceService
 from app.services.strategy_service import StrategyService
 from app.services.simulation_service import SimulationService
+from app.services.comparison_service import ComparisonService
 from app.utils.exceptions import SessionLoadError, RaceNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -29,6 +32,7 @@ router = APIRouter(prefix="/races", tags=["races"])
 race_service = RaceService()
 strategy_service = StrategyService()
 simulation_service = SimulationService()
+comparison_service = ComparisonService(race_service)
 
 
 @router.get(
@@ -413,3 +417,161 @@ async def simulate_driver(
     except Exception as e:
         logger.error(f"Simulation error: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+# ============================================================================
+# MULTI-SEASON COMPARISON ENDPOINTS
+# ============================================================================
+
+@router.get(
+    "/compare",
+    response_model=TrackComparisonResponse,
+    summary="Compare track across multiple seasons",
+    description="Compare the same circuit across multiple years to identify trends."
+)
+async def compare_track_seasons(
+    track: str = Query(..., description="Track name (e.g., 'Bahrain')"),
+    event: str = Query(..., description="Event name (e.g., 'Bahrain Grand Prix')"),
+    years: str = Query(..., description="Comma-separated years (e.g., '2022,2023,2024')")
+):
+    """
+    Compare the same track across multiple seasons.
+
+    This endpoint returns:
+    - Season-by-season metrics (lap times, winners, pit stops)
+    - Strategy trends (pit windows, compound usage)
+    - Pace evolution over years
+    - Tire degradation patterns
+    - Generated insights
+
+    **Parameters:**
+    - **track**: Track name (e.g., "Bahrain")
+    - **event**: Full event name (e.g., "Bahrain Grand Prix")
+    - **years**: Comma-separated list of years (e.g., "2022,2023,2024")
+
+    **Returns:**
+    - Complete multi-season comparison with trends and insights
+    """
+    try:
+        year_list = [int(y.strip()) for y in years.split(",")]
+        if len(year_list) < 2:
+            raise HTTPException(
+                status_code=400,
+                detail="At least 2 years required for comparison"
+            )
+
+        result = comparison_service.compare_track_seasons(track, year_list, event)
+        return result
+    except ValueError as e:
+        logger.error(f"Comparison error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.get(
+    "/predict",
+    response_model=TrendPredictionWithDriversResponse,
+    summary="Predict next race based on historical trends",
+    description="Use historical data to predict strategy and performance for the next race."
+)
+async def predict_next_race(
+    track: str = Query(..., description="Track name (e.g., 'Bahrain')"),
+    event: str = Query(..., description="Event name (e.g., 'Bahrain Grand Prix')"),
+    years: str = Query(..., description="Comma-separated historical years (e.g., '2022,2023,2024')"),
+    prediction_year: int = Query(..., description="Year to predict (e.g., 2025)")
+):
+    """
+    Predict strategy and performance for the next race.
+
+    Uses linear trend extrapolation and historical pattern analysis to predict:
+    - Expected average lap time
+    - Optimal pit window
+    - Recommended tire strategy
+    - Expected degradation level
+    - Individual driver predictions
+
+    **Parameters:**
+    - **track**: Track name (e.g., "Bahrain")
+    - **event**: Full event name (e.g., "Bahrain Grand Prix")
+    - **years**: Comma-separated historical years (e.g., "2022,2023,2024")
+    - **prediction_year**: Year to predict for (e.g., 2025)
+
+    **Returns:**
+    - Prediction with confidence scores, driver predictions, and methodology explanation
+    """
+    try:
+        year_list = [int(y.strip()) for y in years.split(",")]
+        if len(year_list) < 2:
+            raise HTTPException(
+                status_code=400,
+                detail="At least 2 years of historical data required for prediction"
+            )
+
+        result = comparison_service.predict_next_race(
+            track, year_list, event, prediction_year
+        )
+        return result
+    except ValueError as e:
+        logger.error(f"Prediction error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+# ============================================================================
+# METADATA ENDPOINT
+# ============================================================================
+
+@router.get(
+    "/metadata",
+    summary="Get driver and team metadata",
+    description="Get driver information, team colors, and track data."
+)
+async def get_metadata():
+    """
+    Get driver and team metadata.
+
+    Returns driver information (name, number, team, color) and team data.
+    Used for consistent styling across the UI.
+    """
+    import json
+    from pathlib import Path
+
+    try:
+        metadata_path = Path(__file__).parent.parent.parent.parent / "data" / "metadata.json"
+        if not metadata_path.exists():
+            return {"error": "Metadata file not found", "drivers": {}, "teams": {}}
+
+        with open(metadata_path, "r", encoding="utf-8") as f:
+            metadata = json.load(f)
+
+        # Enrich static metadata with headshots discovered in loaded FastF1 sessions.
+        headshots_by_driver = {}
+        for session_payload in race_service._sessions.values():
+            results_df = session_payload.get("race_results")
+            if results_df is None or results_df.empty:
+                continue
+
+            for _, row in results_df.iterrows():
+                driver_code = str(row.get("Driver", "")).strip().upper()
+                headshot = row.get("HeadshotUrl")
+                if not driver_code or not headshot:
+                    continue
+                headshot_str = str(headshot).strip()
+                if headshot_str and headshot_str.lower() != "nan":
+                    headshots_by_driver[driver_code] = headshot_str
+
+        drivers_meta = metadata.get("drivers", {})
+        for code, driver_meta in drivers_meta.items():
+            if code in headshots_by_driver:
+                driver_meta["headshot_url"] = headshots_by_driver[code]
+            else:
+                driver_meta.setdefault("headshot_url", None)
+
+        return metadata
+    except Exception as e:
+        logger.error(f"Metadata error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to load metadata: {str(e)}")

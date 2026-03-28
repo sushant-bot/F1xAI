@@ -96,8 +96,8 @@ class RaceService:
 
         total_drivers = int(stats.get("num_drivers", 0))
         total_laps = int(stats.get("total_laps", 0))
-        avg_lap_time = float(laps_df["LapTime"].dt.total_seconds().mean()) if len(laps_df) else 0.0
-        race_duration = avg_lap_time * total_laps if total_laps > 0 else 0.0
+        avg_lap_time = self._compute_average_lap_time_seconds(laps_df)
+        race_duration = self._compute_race_duration_seconds(session, results_df, laps_df, avg_lap_time, total_laps)
         
         metrics = RaceOverviewMetrics(
             race_name=race_name,
@@ -124,6 +124,62 @@ class RaceService:
             tire_compounds=tire_compounds,
             best_laps=best_laps,
         )
+
+    def _compute_average_lap_time_seconds(self, laps_df: pd.DataFrame) -> float:
+        """Compute race average lap time using only realistic lap durations."""
+        if laps_df.empty or "LapTime" not in laps_df.columns:
+            return 0.0
+
+        lap_seconds = pd.to_numeric(laps_df["LapTime"].dt.total_seconds(), errors="coerce").dropna()
+        valid = lap_seconds[(lap_seconds > 30) & (lap_seconds < 300)]
+        if valid.empty:
+            return 0.0
+        return float(valid.mean())
+
+    def _compute_race_duration_seconds(
+        self,
+        session,
+        results_df: pd.DataFrame,
+        laps_df: pd.DataFrame,
+        avg_lap_time: float,
+        total_laps: int,
+    ) -> float:
+        """Compute race duration preferring official winner time, with robust fallbacks."""
+        # 1) Official result timing from FastF1 (most accurate).
+        try:
+            if hasattr(session, "results") and isinstance(session.results, pd.DataFrame):
+                winner_result = session.results[session.results["Position"] == 1]
+                if not winner_result.empty and "Time" in winner_result.columns:
+                    winner_time = winner_result.iloc[0].get("Time")
+                    if pd.notna(winner_time):
+                        seconds = float(pd.to_timedelta(winner_time).total_seconds())
+                        if seconds > 0:
+                            return seconds
+        except Exception:
+            pass
+
+        # 2) Sum winner lap times from cleaned laps.
+        try:
+            if not results_df.empty and "Driver" in results_df.columns and "Position" in results_df.columns:
+                winner_rows = results_df[results_df["Position"] == 1]
+                if not winner_rows.empty:
+                    winner_code = str(winner_rows.iloc[0].get("Driver", "")).strip()
+                    if winner_code:
+                        winner_laps = laps_df[laps_df["Driver"] == winner_code]
+                        if not winner_laps.empty:
+                            lap_seconds = pd.to_numeric(
+                                winner_laps["LapTime"].dt.total_seconds(), errors="coerce"
+                            ).dropna()
+                            valid = lap_seconds[(lap_seconds > 30) & (lap_seconds < 300)]
+                            if not valid.empty:
+                                return float(valid.sum())
+        except Exception:
+            pass
+
+        # 3) Last-resort estimate.
+        if total_laps > 0 and avg_lap_time > 0:
+            return float(avg_lap_time * total_laps)
+        return 0.0
     
     def _extract_lap_times(self, laps_df: pd.DataFrame) -> List[DriverLapTime]:
         """Extract lap times for all drivers."""
