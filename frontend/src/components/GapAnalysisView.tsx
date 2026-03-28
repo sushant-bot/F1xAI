@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import type { RaceOverview } from "@/lib/api";
 import {
   Area,
@@ -33,8 +33,78 @@ const DRIVER_COLORS: Record<string, string> = {
 
 const LINE_COLORS = ["#e10600", "#27F4D2", "#0090ff", "#ff8700", "#22c55e", "#a855f7", "#f59e0b", "#ec4899"];
 
+// Custom tooltip for gap charts
+interface GapTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    dataKey: string;
+    value: number;
+    color: string;
+  }>;
+  label?: number;
+}
+
+const GapChartTooltip = ({ active, payload, label }: GapTooltipProps) => {
+  if (!active || !payload || payload.length === 0) return null;
+
+  const sortedPayload = [...payload].sort((a, b) => a.value - b.value);
+
+  return (
+    <div className="f1-tooltip" style={{ minWidth: 160 }}>
+      <div className="f1-tooltip-label">LAP {label}</div>
+      <div className="space-y-1">
+        {sortedPayload.map((entry) => (
+          <div key={entry.dataKey} className="f1-tooltip-item">
+            <div className="flex items-center gap-2">
+              <span
+                className="w-2 h-2"
+                style={{ backgroundColor: entry.color }}
+              />
+              <span className="f1-tooltip-driver">{entry.dataKey}</span>
+            </div>
+            <span className="f1-tooltip-time">+{entry.value.toFixed(3)}s</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const PositionTooltip = ({ active, payload, label }: GapTooltipProps) => {
+  if (!active || !payload || payload.length === 0) return null;
+
+  const sortedPayload = [...payload].sort((a, b) => a.value - b.value);
+
+  return (
+    <div className="f1-tooltip" style={{ minWidth: 160 }}>
+      <div className="f1-tooltip-label">LAP {label}</div>
+      <div className="space-y-1">
+        {sortedPayload.map((entry) => (
+          <div key={entry.dataKey} className="f1-tooltip-item">
+            <div className="flex items-center gap-2">
+              <span
+                className="w-2 h-2"
+                style={{ backgroundColor: entry.color }}
+              />
+              <span className="f1-tooltip-driver">{entry.dataKey}</span>
+            </div>
+            <span className={`f1-tooltip-time ${entry.value === 1 ? "text-yellow-500" : ""}`}>
+              P{entry.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export default function GapAnalysisView({ overview }: GapAnalysisViewProps) {
   const [compareMode, setCompareMode] = useState<"leader" | "ahead">("leader");
+  const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
+
+  const handleDriverClick = useCallback((driver: string) => {
+    setSelectedDriver((prev) => (prev === driver ? null : driver));
+  }, []);
 
   // Get sorted race results
   const sortedResults = useMemo(() => {
@@ -249,12 +319,12 @@ export default function GapAnalysisView({ overview }: GapAnalysisViewProps) {
     <div className="space-y-4">
       {/* Gap Analysis KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4">
-        <div className="bg-surface-container border border-stone-800 p-3 instrument-border">
+        <div className="bg-surface-container border border-stone-800 p-3 instrument-border hover-lift">
           <div className="flex justify-between items-start mb-1">
-            <span className="text-[8px] font-bold uppercase tracking-widest text-stone-500">Winner Margin</span>
+            <span className="text-[8px] font-headline font-bold uppercase tracking-widest text-stone-500">Winner Margin</span>
             <span className="text-[7px] font-mono text-yellow-500">[P1-P2]</span>
           </div>
-          <div className="text-xl font-headline font-black text-yellow-500">
+          <div className="text-xl font-display font-black text-yellow-500">
             +{kpis.winnerGap.toFixed(3)}<span className="text-xs ml-0.5 font-normal">s</span>
           </div>
           <div className="mt-1 text-[8px] font-mono text-stone-500">
@@ -262,12 +332,12 @@ export default function GapAnalysisView({ overview }: GapAnalysisViewProps) {
           </div>
         </div>
 
-        <div className="bg-surface-container border border-stone-800 p-3 instrument-border">
+        <div className="bg-surface-container border border-stone-800 p-3 instrument-border hover-lift">
           <div className="flex justify-between items-start mb-1">
-            <span className="text-[8px] font-bold uppercase tracking-widest text-stone-500">Closest Battle</span>
+            <span className="text-[8px] font-headline font-bold uppercase tracking-widest text-stone-500">Closest Battle</span>
             <span className="text-[7px] font-mono text-green-500">[GAP]</span>
           </div>
-          <div className="text-xl font-headline font-black text-green-500">
+          <div className="text-xl font-display font-black text-green-500">
             +{kpis.closestGap.toFixed(3)}<span className="text-xs ml-0.5 font-normal">s</span>
           </div>
           <div className="mt-1 text-[8px] font-mono text-stone-500">
@@ -275,22 +345,22 @@ export default function GapAnalysisView({ overview }: GapAnalysisViewProps) {
           </div>
         </div>
 
-        <div className="bg-surface-container border border-stone-800 p-3 instrument-border">
+        <div className="bg-surface-container border border-stone-800 p-3 instrument-border hover-lift">
           <div className="flex justify-between items-start mb-1">
-            <span className="text-[8px] font-bold uppercase tracking-widest text-stone-500">Avg Gap</span>
+            <span className="text-[8px] font-headline font-bold uppercase tracking-widest text-stone-500">Avg Gap</span>
             <span className="text-[7px] font-mono text-stone-600">[INTERVAL]</span>
           </div>
-          <div className="text-xl font-headline font-black text-on-surface">
+          <div className="text-xl font-display font-black text-on-surface">
             +{kpis.avgGap.toFixed(2)}<span className="text-xs ml-0.5 font-normal">s</span>
           </div>
         </div>
 
-        <div className="bg-surface-container border border-stone-800 p-3 instrument-border">
+        <div className="bg-surface-container border border-stone-800 p-3 instrument-border hover-lift">
           <div className="flex justify-between items-start mb-1">
-            <span className="text-[8px] font-bold uppercase tracking-widest text-stone-500">Field Spread</span>
+            <span className="text-[8px] font-headline font-bold uppercase tracking-widest text-stone-500">Field Spread</span>
             <span className="text-[7px] font-mono text-primary-container">[P1-LAST]</span>
           </div>
-          <div className="text-xl font-headline font-black text-primary-container">
+          <div className="text-xl font-display font-black text-primary-container">
             {kpis.lastPlaceGap > 0 ? `+${Math.floor(kpis.lastPlaceGap)}` : "--"}<span className="text-xs ml-0.5 font-normal">s</span>
           </div>
         </div>
@@ -300,62 +370,96 @@ export default function GapAnalysisView({ overview }: GapAnalysisViewProps) {
       <div className="bg-surface-container border border-stone-800 p-4 flex flex-col relative overflow-hidden min-w-0">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
           <div>
-            <h2 className="font-headline font-bold text-[10px] uppercase tracking-[0.2em] flex items-center gap-2">
-              Gap to Leader
-              <span className="text-[8px] font-mono text-stone-600 font-normal">CUMULATIVE_DELTA</span>
-            </h2>
-          </div>
-          <div className="flex gap-4 flex-wrap">
-            {gapData.topDrivers.slice(1, 5).map((driver, idx) => (
-              <div key={driver} className="flex items-center gap-1.5">
-                <span
-                  className="w-2 h-0.5"
-                  style={{ backgroundColor: DRIVER_COLORS[driver] || LINE_COLORS[idx] }}
-                />
-                <span className="text-[9px] font-bold font-mono">{driver}</span>
-              </div>
-            ))}
+            <h2 className="chart-title">Gap to Leader</h2>
+            <p className="chart-subtitle mt-0.5">Cumulative time delta over race distance</p>
           </div>
         </div>
+
+        {/* Legend */}
+        <div className="flex flex-wrap gap-1 mb-3">
+          {gapData.topDrivers.slice(1, 6).map((driver, idx) => {
+            const isSelected = selectedDriver === driver;
+            const isFaded = selectedDriver && !isSelected;
+            const color = DRIVER_COLORS[driver] || LINE_COLORS[idx];
+
+            return (
+              <div
+                key={driver}
+                className={`legend-item flex items-center gap-1.5 ${
+                  isSelected ? "selected" : ""
+                } ${isFaded ? "faded" : ""}`}
+                onClick={() => handleDriverClick(driver)}
+              >
+                <span
+                  className="w-3 h-1"
+                  style={{
+                    backgroundColor: color,
+                    boxShadow: isSelected ? `0 0 6px ${color}` : 'none'
+                  }}
+                />
+                <span className="text-[9px] font-headline font-bold">{driver}</span>
+              </div>
+            );
+          })}
+          {selectedDriver && (
+            <button
+              className="text-[9px] text-stone-500 hover:text-white px-2 transition-colors"
+              onClick={() => setSelectedDriver(null)}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
         <div className="flex-1 relative min-h-[200px] sm:min-h-[280px] min-w-0">
           {gapData.gapChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
               <AreaChart data={gapData.gapChartData}>
-                <CartesianGrid strokeDasharray="2 2" stroke="#333" />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#1f1f1f"
+                  strokeOpacity={0.5}
+                  horizontal={true}
+                  vertical={false}
+                />
                 <XAxis
                   dataKey="lap"
-                  stroke="#666"
-                  tick={{ fill: "#666", fontSize: 10 }}
+                  stroke="#444"
+                  tick={{ fill: "#555", fontSize: 9, fontFamily: "var(--font-rajdhani)" }}
                   tickLine={{ stroke: "#333" }}
+                  axisLine={{ stroke: "#333" }}
                 />
                 <YAxis
-                  stroke="#666"
-                  tick={{ fill: "#666", fontSize: 10 }}
+                  stroke="#444"
+                  tick={{ fill: "#555", fontSize: 9, fontFamily: "ui-monospace" }}
                   tickLine={{ stroke: "#333" }}
+                  axisLine={{ stroke: "#333" }}
                   tickFormatter={(v) => `+${v}s`}
                   domain={[0, "auto"]}
+                  width={50}
                 />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#181818",
-                    border: "1px solid #333",
-                    borderRadius: 0,
-                    fontSize: 10,
-                  }}
-                  labelStyle={{ color: "#e5e2e1" }}
-                  formatter={(value) => [`+${Number(value).toFixed(3)}s`, ""]}
-                />
-                {gapData.topDrivers.slice(1, 6).map((driver, idx) => (
-                  <Area
-                    key={driver}
-                    type="monotone"
-                    dataKey={driver}
-                    stroke={DRIVER_COLORS[driver] || LINE_COLORS[idx]}
-                    fill={DRIVER_COLORS[driver] || LINE_COLORS[idx]}
-                    fillOpacity={0.1}
-                    strokeWidth={1.5}
-                  />
-                ))}
+                <Tooltip content={<GapChartTooltip />} />
+                {gapData.topDrivers.slice(1, 6).map((driver, idx) => {
+                  const isSelected = selectedDriver === driver;
+                  const isFaded = selectedDriver && !isSelected;
+                  const color = DRIVER_COLORS[driver] || LINE_COLORS[idx];
+
+                  return (
+                    <Area
+                      key={driver}
+                      type="monotone"
+                      dataKey={driver}
+                      stroke={color}
+                      fill={color}
+                      fillOpacity={isFaded ? 0.02 : isSelected ? 0.15 : 0.08}
+                      strokeWidth={isSelected ? 2 : isFaded ? 1 : 1.5}
+                      strokeOpacity={isFaded ? 0.2 : 1}
+                      style={{
+                        filter: isSelected ? `drop-shadow(0 0 4px ${color})` : 'none'
+                      }}
+                    />
+                  );
+                })}
               </AreaChart>
             </ResponsiveContainer>
           ) : (
@@ -370,62 +474,88 @@ export default function GapAnalysisView({ overview }: GapAnalysisViewProps) {
       <div className="bg-surface-container border border-stone-800 p-4 flex flex-col relative overflow-hidden min-w-0">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
           <div>
-            <h2 className="font-headline font-bold text-[10px] uppercase tracking-[0.2em] flex items-center gap-2">
-              Position Battle
-              <span className="text-[8px] font-mono text-stone-600 font-normal">TRACK_POSITION</span>
-            </h2>
-          </div>
-          <div className="flex gap-3 flex-wrap">
-            {positionData.topDrivers.slice(0, 6).map((driver, idx) => (
-              <div key={driver} className="flex items-center gap-1.5">
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: DRIVER_COLORS[driver] || LINE_COLORS[idx] }}
-                />
-                <span className="text-[9px] font-bold font-mono">{driver}</span>
-              </div>
-            ))}
+            <h2 className="chart-title">Position Battle</h2>
+            <p className="chart-subtitle mt-0.5">Track position changes throughout the race</p>
           </div>
         </div>
+
+        {/* Legend */}
+        <div className="flex flex-wrap gap-1 mb-3">
+          {positionData.topDrivers.slice(0, 6).map((driver, idx) => {
+            const isSelected = selectedDriver === driver;
+            const isFaded = selectedDriver && !isSelected;
+            const color = DRIVER_COLORS[driver] || LINE_COLORS[idx];
+
+            return (
+              <div
+                key={driver}
+                className={`legend-item flex items-center gap-1.5 ${
+                  isSelected ? "selected" : ""
+                } ${isFaded ? "faded" : ""}`}
+                onClick={() => handleDriverClick(driver)}
+              >
+                <span
+                  className="w-2 h-2"
+                  style={{
+                    backgroundColor: color,
+                    boxShadow: isSelected ? `0 0 6px ${color}` : 'none'
+                  }}
+                />
+                <span className="text-[9px] font-headline font-bold">{driver}</span>
+              </div>
+            );
+          })}
+        </div>
+
         <div className="flex-1 relative min-h-[200px] sm:min-h-[280px] min-w-0">
           {positionData.positionChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
               <LineChart data={positionData.positionChartData}>
-                <CartesianGrid strokeDasharray="2 2" stroke="#333" />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#1f1f1f"
+                  strokeOpacity={0.5}
+                  horizontal={true}
+                  vertical={false}
+                />
                 <XAxis
                   dataKey="lap"
-                  stroke="#666"
-                  tick={{ fill: "#666", fontSize: 10 }}
+                  stroke="#444"
+                  tick={{ fill: "#555", fontSize: 9, fontFamily: "var(--font-rajdhani)" }}
                   tickLine={{ stroke: "#333" }}
+                  axisLine={{ stroke: "#333" }}
                 />
                 <YAxis
-                  stroke="#666"
-                  tick={{ fill: "#666", fontSize: 10 }}
+                  stroke="#444"
+                  tick={{ fill: "#555", fontSize: 9, fontFamily: "ui-monospace" }}
                   tickLine={{ stroke: "#333" }}
+                  axisLine={{ stroke: "#333" }}
                   domain={[1, 10]}
                   reversed
                   tickFormatter={(v) => `P${v}`}
+                  width={35}
                 />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#181818",
-                    border: "1px solid #333",
-                    borderRadius: 0,
-                    fontSize: 10,
-                  }}
-                  labelStyle={{ color: "#e5e2e1" }}
-                  formatter={(value, name) => [`P${value}`, String(name)]}
-                />
-                {positionData.topDrivers.slice(0, 8).map((driver, idx) => (
-                  <Line
-                    key={driver}
-                    type="stepAfter"
-                    dataKey={driver}
-                    stroke={DRIVER_COLORS[driver] || LINE_COLORS[idx % LINE_COLORS.length]}
-                    dot={false}
-                    strokeWidth={2}
-                  />
-                ))}
+                <Tooltip content={<PositionTooltip />} />
+                {positionData.topDrivers.slice(0, 8).map((driver, idx) => {
+                  const isSelected = selectedDriver === driver;
+                  const isFaded = selectedDriver && !isSelected;
+                  const color = DRIVER_COLORS[driver] || LINE_COLORS[idx % LINE_COLORS.length];
+
+                  return (
+                    <Line
+                      key={driver}
+                      type="stepAfter"
+                      dataKey={driver}
+                      stroke={color}
+                      dot={false}
+                      strokeWidth={isSelected ? 3 : isFaded ? 1 : 2}
+                      strokeOpacity={isFaded ? 0.2 : 1}
+                      style={{
+                        filter: isSelected ? `drop-shadow(0 0 4px ${color})` : 'none'
+                      }}
+                    />
+                  );
+                })}
               </LineChart>
             </ResponsiveContainer>
           ) : (
@@ -442,27 +572,21 @@ export default function GapAnalysisView({ overview }: GapAnalysisViewProps) {
         <div className="bg-surface-container border border-stone-800 p-4 instrument-border">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h2 className="font-headline font-bold text-[10px] uppercase tracking-[0.2em] flex items-center gap-2">
-                Interval Gaps
-                <span className="text-[8px] font-mono text-stone-600 font-normal">CAR_AHEAD</span>
-              </h2>
+              <h2 className="chart-title text-[11px]">Interval Gaps</h2>
+              <p className="chart-subtitle mt-0.5">Final race intervals</p>
             </div>
-            <div className="flex gap-2">
+            <div className="mode-toggle">
               <button
                 onClick={() => setCompareMode("leader")}
-                className={`text-[8px] font-mono px-2 py-1 ${
-                  compareMode === "leader" ? "bg-primary-container text-white" : "bg-stone-800 text-stone-400"
-                }`}
+                className={`mode-toggle-btn ${compareMode === "leader" ? "active" : ""}`}
               >
-                TO LEADER
+                Leader
               </button>
               <button
                 onClick={() => setCompareMode("ahead")}
-                className={`text-[8px] font-mono px-2 py-1 ${
-                  compareMode === "ahead" ? "bg-primary-container text-white" : "bg-stone-800 text-stone-400"
-                }`}
+                className={`mode-toggle-btn ${compareMode === "ahead" ? "active" : ""}`}
               >
-                TO AHEAD
+                Ahead
               </button>
             </div>
           </div>
@@ -474,7 +598,7 @@ export default function GapAnalysisView({ overview }: GapAnalysisViewProps) {
               const barWidth = maxGap > 0 ? Math.min((gap / maxGap) * 100, 100) : 0;
 
               return (
-                <div key={driver.driver_code} className="flex items-center gap-3">
+                <div key={driver.driver_code} className="flex items-center gap-3 hover-lift transition-all duration-200">
                   <div className="w-6 text-right">
                     <span
                       className={`text-[10px] font-mono font-bold ${
@@ -489,18 +613,18 @@ export default function GapAnalysisView({ overview }: GapAnalysisViewProps) {
                     style={{ backgroundColor: DRIVER_COLORS[driver.driver_code] || "#666" }}
                   />
                   <div className="w-10">
-                    <span className="text-[10px] font-mono font-bold text-white">{driver.driver_code}</span>
+                    <span className="text-[10px] font-headline font-bold text-white">{driver.driver_code}</span>
                   </div>
                   <div className="flex-1 flex items-center gap-2">
                     {idx === 0 && compareMode === "leader" ? (
                       <div className="flex-1 h-5 bg-yellow-500/20 flex items-center px-2">
-                        <span className="text-[9px] font-mono font-bold text-yellow-500">LEADER</span>
+                        <span className="text-[9px] font-headline font-bold text-yellow-500 uppercase tracking-wider">Leader</span>
                       </div>
                     ) : (
                       <>
                         <div className="flex-1 h-5 bg-stone-900/50 overflow-hidden">
                           <div
-                            className="h-full bg-gradient-to-r from-primary-container/60 to-primary-container/30"
+                            className="h-full bg-gradient-to-r from-primary-container/60 to-primary-container/30 transition-all duration-500"
                             style={{ width: `${barWidth}%` }}
                           />
                         </div>
@@ -521,15 +645,13 @@ export default function GapAnalysisView({ overview }: GapAnalysisViewProps) {
         {/* Gap Details Table */}
         <div className="bg-surface border border-stone-800">
           <div className="px-4 py-2 border-b border-stone-800 flex justify-between items-center bg-stone-900/50">
-            <h2 className="font-headline font-bold text-[10px] uppercase tracking-[0.2em]">
-              Gap Details
-            </h2>
+            <h2 className="chart-title text-[11px]">Gap Details</h2>
             <span className="text-[7px] font-mono text-stone-600">[FINISH_ORDER]</span>
           </div>
           <div className="overflow-x-auto max-h-[350px] overflow-y-auto">
             <table className="w-full text-left border-collapse whitespace-nowrap">
               <thead className="sticky top-0 z-10">
-                <tr className="text-[8px] uppercase text-stone-500 border-b border-stone-800 font-bold tracking-widest bg-stone-950">
+                <tr className="text-[8px] uppercase text-stone-500 border-b border-stone-800 font-headline font-bold tracking-widest bg-stone-950">
                   <th className="px-4 py-3 font-medium">Pos</th>
                   <th className="px-4 py-3 font-medium">Driver</th>
                   <th className="px-4 py-3 font-medium text-right">To Leader</th>
@@ -540,7 +662,7 @@ export default function GapAnalysisView({ overview }: GapAnalysisViewProps) {
                 {intervalGaps.map((driver, idx) => (
                   <tr
                     key={driver.driver_code}
-                    className={`border-b border-stone-800/50 hover:bg-stone-900/30 ${
+                    className={`border-b border-stone-800/50 hover:bg-white/5 transition-colors ${
                       idx === 0 ? "bg-yellow-500/5" : ""
                     }`}
                   >
@@ -581,10 +703,10 @@ export default function GapAnalysisView({ overview }: GapAnalysisViewProps) {
       {/* Battle Zones */}
       <div className="bg-surface-container border border-stone-800 p-4 instrument-border">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-headline font-bold text-[10px] uppercase tracking-[0.2em] flex items-center gap-2">
-            Battle Zones
-            <span className="text-[8px] font-mono text-stone-600 font-normal">CLOSE_FIGHTS</span>
-          </h2>
+          <div>
+            <h2 className="chart-title">Battle Zones</h2>
+            <p className="chart-subtitle mt-0.5">Close fights at race end</p>
+          </div>
           <span className="text-[7px] font-mono text-green-500 bg-green-500/10 px-2 py-1 border border-green-500/20">
             &lt; 3.0s GAP
           </span>
@@ -604,7 +726,7 @@ export default function GapAnalysisView({ overview }: GapAnalysisViewProps) {
               return (
                 <div
                   key={driver.driver_code}
-                  className="bg-stone-900/50 p-3 border border-stone-800"
+                  className="bg-stone-900/50 p-3 border border-stone-800 hover-lift transition-all duration-200"
                   style={{
                     borderColor: `rgba(34, 197, 94, ${intensity * 0.5 + 0.2})`,
                   }}
@@ -612,10 +734,10 @@ export default function GapAnalysisView({ overview }: GapAnalysisViewProps) {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <div
-                        className="w-2 h-2 rounded-full"
+                        className="w-2 h-2"
                         style={{ backgroundColor: DRIVER_COLORS[ahead.driver_code] || "#666" }}
                       />
-                      <span className="text-[10px] font-mono font-bold text-white">{ahead.driver_code}</span>
+                      <span className="text-[10px] font-headline font-bold text-white uppercase">{ahead.driver_code}</span>
                     </div>
                     <span className="text-[9px] font-mono text-stone-500">P{ahead.position}</span>
                   </div>
@@ -624,7 +746,7 @@ export default function GapAnalysisView({ overview }: GapAnalysisViewProps) {
                     <div className="flex-1 h-0.5 bg-stone-700" />
                     <div className="px-3">
                       <span
-                        className="text-sm font-headline font-black"
+                        className="text-sm font-display font-black"
                         style={{
                           color: `rgb(${Math.floor(34 + intensity * 200)}, ${Math.floor(197 - intensity * 100)}, ${Math.floor(94 - intensity * 50)})`,
                         }}
@@ -638,9 +760,9 @@ export default function GapAnalysisView({ overview }: GapAnalysisViewProps) {
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-[9px] font-mono text-stone-500">P{driver.position}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono font-bold text-white">{driver.driver_code}</span>
+                      <span className="text-[10px] font-headline font-bold text-white uppercase">{driver.driver_code}</span>
                       <div
-                        className="w-2 h-2 rounded-full"
+                        className="w-2 h-2"
                         style={{ backgroundColor: DRIVER_COLORS[driver.driver_code] || "#666" }}
                       />
                     </div>

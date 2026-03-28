@@ -10,18 +10,33 @@
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
   }
+
+  /* F1-style headline typography */
+  .f1-title {
+    font-family: var(--font-rajdhani), 'Rajdhani', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .f1-display {
+    font-family: var(--font-orbitron), 'Orbitron', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
 }
 
 @layer components {
   .grid-bg {
     background-image:
-      linear-gradient(to right, #201f1f 1px, transparent 1px),
-      linear-gradient(to bottom, #201f1f 1px, transparent 1px);
+      linear-gradient(to right, #1a1a1a 1px, transparent 1px),
+      linear-gradient(to bottom, #1a1a1a 1px, transparent 1px);
     background-size: 24px 24px;
   }
 
   .sub-pixel-grid {
-    background-image: radial-gradient(circle, #333 0.5px, transparent 0.5px);
+    background-image: radial-gradient(circle, #2a2a2a 0.5px, transparent 0.5px);
     background-size: 8px 8px;
   }
 
@@ -76,6 +91,171 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Chart title styling */
+  .chart-title {
+    font-family: var(--font-rajdhani), 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #e5e2e1;
+  }
+
+  .chart-subtitle {
+    font-family: var(--font-inter), 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #666;
+  }
+
+  /* F1-style tooltip */
+  .f1-tooltip {
+    background: linear-gradient(180deg, #1a1a1a 0%, #141414 100%) !important;
+    border: 1px solid #333 !important;
+    border-left: 3px solid #e10600 !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+    padding: 12px !important;
+  }
+
+  .f1-tooltip-label {
+    font-family: var(--font-rajdhani), 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #e10600;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #333;
+  }
+
+  .f1-tooltip-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    padding: 3px 0;
+  }
+
+  .f1-tooltip-driver {
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .f1-tooltip-time {
+    font-family: ui-monospace, monospace;
+    color: #999;
+  }
+
+  /* Line glow effect */
+  .chart-line-glow {
+    filter: drop-shadow(0 0 3px currentColor);
+  }
+
+  /* Driver highlight states */
+  .driver-line-active {
+    stroke-width: 2.5;
+    filter: drop-shadow(0 0 4px currentColor);
+  }
+
+  .driver-line-faded {
+    opacity: 0.25;
+  }
+
+  /* Current lap indicator */
+  .lap-indicator-line {
+    stroke: #e10600;
+    stroke-width: 2;
+    stroke-dasharray: 4 4;
+    opacity: 0.8;
+  }
+
+  /* Insight panel styling */
+  .insight-card {
+    background: linear-gradient(135deg, rgba(24,24,24,0.9) 0%, rgba(14,14,14,0.9) 100%);
+    border: 1px solid #333;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .insight-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #e10600 0%, transparent 100%);
+  }
+
+  /* Mode toggle buttons */
+  .mode-toggle {
+    display: flex;
+    background: #0e0e0e;
+    border: 1px solid #333;
+    padding: 2px;
+  }
+
+  .mode-toggle-btn {
+    padding: 6px 12px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: all 0.2s ease;
+    color: #666;
+  }
+
+  .mode-toggle-btn.active {
+    background: #e10600;
+    color: #fff;
+  }
+
+  .mode-toggle-btn:hover:not(.active) {
+    color: #999;
+  }
+
+  /* Legend interaction */
+  .legend-item {
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+    padding: 4px 8px;
+    border-radius: 0;
+  }
+
+  .legend-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .legend-item.selected {
+    background: rgba(225, 6, 0, 0.1);
+  }
+
+  .legend-item.faded {
+    opacity: 0.3;
+  }
+
+  /* Micro animations */
+  .hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .data-update {
+    animation: data-flash 0.5s ease;
+  }
+
+  @keyframes data-flash {
+    0% { background-color: rgba(225, 6, 0, 0.2); }
+    100% { background-color: transparent; }
+  }
 }
 
 /* Custom scrollbar */
@@ -96,4 +276,19 @@
 .material-symbols-outlined {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
   vertical-align: middle;
+}
+
+/* Recharts overrides for cleaner grid */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: #1f1f1f !important;
+  stroke-opacity: 0.6 !important;
+}
+
+.recharts-cartesian-axis-line {
+  stroke: #2a2a2a !important;
+}
+
+.recharts-cartesian-axis-tick-line {
+  stroke: #2a2a2a !important;
 }

@@ -9,6 +9,7 @@ import TyresView from "@/components/TyresView";
 import GapAnalysisView from "@/components/GapAnalysisView";
 import RaceReplayView from "@/components/RaceReplayView";
 import StrategyRecommendationsView from "@/components/StrategyRecommendationsView";
+import TrackComparisonView from "@/components/TrackComparisonView";
 
 export default function Home() {
   const [overview, setOverview] = useState<RaceOverview | null>(null);
@@ -134,6 +135,8 @@ export default function Home() {
         return <RaceReplayView overview={overview} />;
       case "recommendations":
         return <StrategyRecommendationsView overview={overview} />;
+      case "compare":
+        return <TrackComparisonView />;
       default:
         return <TelemetryView overview={overview} />;
     }
@@ -192,14 +195,14 @@ function Header({
     <header className="bg-surface border-b border-stone-800 flex flex-col w-full z-50 fixed top-0">
       <div className="flex justify-between items-center h-12 px-4">
         <div className="flex items-center gap-2">
-          <span className="text-lg font-black uppercase tracking-tighter text-primary-container font-headline">
+          <span className="text-lg font-black uppercase tracking-tighter text-primary-container font-display">
             APEX26
           </span>
           <span className="hidden sm:inline text-[10px] font-mono text-stone-600 px-2 border-x border-stone-800">
             [SYS_READY]
           </span>
           {activeView && (
-            <span className="hidden lg:inline text-[10px] font-mono text-primary-container px-2 bg-primary-container/10 border border-primary-container/20">
+            <span className="hidden lg:inline text-[10px] font-headline font-bold text-primary-container px-2 bg-primary-container/10 border border-primary-container/20 uppercase tracking-wider">
               {getViewLabel(activeView)}
             </span>
           )}
@@ -270,6 +273,7 @@ function Sidebar({
     { id: "replay", label: "Replay", icon: "play_circle", description: "Race replay" },
     { id: "strategy", label: "Strategy", icon: "route", description: "Pit stops & stints" },
     { id: "recommendations", label: "Strategy AI", icon: "psychology", description: "AI recommendations" },
+    { id: "compare", label: "Compare", icon: "compare", description: "Multi-season analysis" },
     { id: "tyres", label: "Tyres", icon: "tire_repair", description: "Compound usage" },
   ];
 
@@ -339,6 +343,7 @@ function MobileNav({
     { id: "replay", label: "Replay", icon: "play_circle" },
     { id: "strategy", label: "Strategy", icon: "route" },
     { id: "recommendations", label: "AI", icon: "psychology" },
+    { id: "compare", label: "Compare", icon: "compare" },
     { id: "tyres", label: "Tyres", icon: "tire_repair" },
   ];
 

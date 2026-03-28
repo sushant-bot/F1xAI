@@ -1,0 +1,254 @@
+{
+  "drivers": {
+    "VER": {
+      "name": "Max Verstappen",
+      "number": 1,
+      "team": "Red Bull Racing",
+      "nationality": "NED",
+      "color": "#3671C6"
+    },
+    "PER": {
+      "name": "Sergio Perez",
+      "number": 11,
+      "team": "Red Bull Racing",
+      "nationality": "MEX",
+      "color": "#3671C6"
+    },
+    "HAM": {
+      "name": "Lewis Hamilton",
+      "number": 44,
+      "team": "Mercedes",
+      "nationality": "GBR",
+      "color": "#27F4D2"
+    },
+    "RUS": {
+      "name": "George Russell",
+      "number": 63,
+      "team": "Mercedes",
+      "nationality": "GBR",
+      "color": "#27F4D2"
+    },
+    "LEC": {
+      "name": "Charles Leclerc",
+      "number": 16,
+      "team": "Ferrari",
+      "nationality": "MON",
+      "color": "#E8002D"
+    },
+    "SAI": {
+      "name": "Carlos Sainz",
+      "number": 55,
+      "team": "Ferrari",
+      "nationality": "ESP",
+      "color": "#E8002D"
+    },
+    "NOR": {
+      "name": "Lando Norris",
+      "number": 4,
+      "team": "McLaren",
+      "nationality": "GBR",
+      "color": "#FF8700"
+    },
+    "PIA": {
+      "name": "Oscar Piastri",
+      "number": 81,
+      "team": "McLaren",
+      "nationality": "AUS",
+      "color": "#FF8700"
+    },
+    "ALO": {
+      "name": "Fernando Alonso",
+      "number": 14,
+      "team": "Aston Martin",
+      "nationality": "ESP",
+      "color": "#229971"
+    },
+    "STR": {
+      "name": "Lance Stroll",
+      "number": 18,
+      "team": "Aston Martin",
+      "nationality": "CAN",
+      "color": "#229971"
+    },
+    "GAS": {
+      "name": "Pierre Gasly",
+      "number": 10,
+      "team": "Alpine",
+      "nationality": "FRA",
+      "color": "#2293D1"
+    },
+    "OCO": {
+      "name": "Esteban Ocon",
+      "number": 31,
+      "team": "Alpine",
+      "nationality": "FRA",
+      "color": "#2293D1"
+    },
+    "TSU": {
+      "name": "Yuki Tsunoda",
+      "number": 22,
+      "team": "RB",
+      "nationality": "JPN",
+      "color": "#6692FF"
+    },
+    "RIC": {
+      "name": "Daniel Ricciardo",
+      "number": 3,
+      "team": "RB",
+      "nationality": "AUS",
+      "color": "#6692FF"
+    },
+    "DEV": {
+      "name": "Nyck de Vries",
+      "number": 21,
+      "team": "AlphaTauri",
+      "nationality": "NED",
+      "color": "#6692FF"
+    },
+    "LAW": {
+      "name": "Liam Lawson",
+      "number": 40,
+      "team": "RB",
+      "nationality": "NZL",
+      "color": "#6692FF"
+    },
+    "BOT": {
+      "name": "Valtteri Bottas",
+      "number": 77,
+      "team": "Alfa Romeo",
+      "nationality": "FIN",
+      "color": "#C92D4B"
+    },
+    "ZHO": {
+      "name": "Zhou Guanyu",
+      "number": 24,
+      "team": "Alfa Romeo",
+      "nationality": "CHN",
+      "color": "#C92D4B"
+    },
+    "MAG": {
+      "name": "Kevin Magnussen",
+      "number": 20,
+      "team": "Haas",
+      "nationality": "DEN",
+      "color": "#B6BABD"
+    },
+    "HUL": {
+      "name": "Nico Hulkenberg",
+      "number": 27,
+      "team": "Haas",
+      "nationality": "GER",
+      "color": "#B6BABD"
+    },
+    "ALB": {
+      "name": "Alexander Albon",
+      "number": 23,
+      "team": "Williams",
+      "nationality": "THA",
+      "color": "#64C4FF"
+    },
+    "SAR": {
+      "name": "Logan Sargeant",
+      "number": 2,
+      "team": "Williams",
+      "nationality": "USA",
+      "color": "#64C4FF"
+    }
+  },
+  "teams": {
+    "Red Bull Racing": {
+      "color": "#3671C6",
+      "engine": "Honda RBPT"
+    },
+    "Mercedes": {
+      "color": "#27F4D2",
+      "engine": "Mercedes"
+    },
+    "Ferrari": {
+      "color": "#E8002D",
+      "engine": "Ferrari"
+    },
+    "McLaren": {
+      "color": "#FF8700",
+      "engine": "Mercedes"
+    },
+    "Aston Martin": {
+      "color": "#229971",
+      "engine": "Mercedes"
+    },
+    "Alpine": {
+      "color": "#2293D1",
+      "engine": "Renault"
+    },
+    "RB": {
+      "color": "#6692FF",
+      "engine": "Honda RBPT"
+    },
+    "AlphaTauri": {
+      "color": "#6692FF",
+      "engine": "Honda RBPT"
+    },
+    "Alfa Romeo": {
+      "color": "#C92D4B",
+      "engine": "Ferrari"
+    },
+    "Haas": {
+      "color": "#B6BABD",
+      "engine": "Ferrari"
+    },
+    "Williams": {
+      "color": "#64C4FF",
+      "engine": "Mercedes"
+    }
+  },
+  "tracks": {
+    "Bahrain": {
+      "name": "Bahrain International Circuit",
+      "country": "Bahrain",
+      "laps": 57,
+      "length_km": 5.412
+    },
+    "Saudi Arabia": {
+      "name": "Jeddah Corniche Circuit",
+      "country": "Saudi Arabia",
+      "laps": 50,
+      "length_km": 6.174
+    },
+    "Australia": {
+      "name": "Albert Park Circuit",
+      "country": "Australia",
+      "laps": 58,
+      "length_km": 5.278
+    },
+    "Monaco": {
+      "name": "Circuit de Monaco",
+      "country": "Monaco",
+      "laps": 78,
+      "length_km": 3.337
+    },
+    "Spain": {
+      "name": "Circuit de Barcelona-Catalunya",
+      "country": "Spain",
+      "laps": 66,
+      "length_km": 4.657
+    },
+    "Great Britain": {
+      "name": "Silverstone Circuit",
+      "country": "UK",
+      "laps": 52,
+      "length_km": 5.891
+    },
+    "Italy": {
+      "name": "Autodromo Nazionale Monza",
+      "country": "Italy",
+      "laps": 53,
+      "length_km": 5.793
+    },
+    "Belgium": {
+      "name": "Circuit de Spa-Francorchamps",
+      "country": "Belgium",
+      "laps": 44,
+      "length_km": 7.004
+    }
+  }
+}
