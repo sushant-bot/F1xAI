@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import type { RaceOverview } from "@/lib/api";
 import {
   CartesianGrid,
@@ -11,6 +11,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+
+const BAHRAIN_LAYOUT_SVG_URL = "https://raw.githubusercontent.com/julesr0y/f1-circuits-svg/main/circuits/white-outline/bahrain-1.svg";
 
 interface TelemetryViewProps {
   overview: RaceOverview;
@@ -98,6 +100,37 @@ const CustomChartTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 
 export default function TelemetryView({ overview }: TelemetryViewProps) {
   const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
+  const [bahrainPathD, setBahrainPathD] = useState<string>("");
+  const trackPathRef = useRef<SVGPathElement | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadBahrainLayout = async () => {
+      try {
+        const response = await fetch(BAHRAIN_LAYOUT_SVG_URL, { cache: "force-cache" });
+        if (!response.ok) return;
+
+        const svgText = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svgText, "image/svg+xml");
+        const firstPath = doc.querySelector("path");
+        const pathD = firstPath?.getAttribute("d");
+
+        if (isActive && pathD) {
+          setBahrainPathD(pathD);
+        }
+      } catch {
+        // Fallback drawing if remote layout cannot be fetched.
+      }
+    };
+
+    void loadBahrainLayout();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const handleDriverClick = useCallback((driver: string) => {
     setSelectedDriver((prev) => (prev === driver ? null : driver));
@@ -283,7 +316,7 @@ export default function TelemetryView({ overview }: TelemetryViewProps) {
 
       {/* Track Map & Sub-Systems */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-surface-container p-4 border border-stone-800 instrument-border h-fit">
+        <div className="bg-surface-container p-4 border border-stone-800 instrument-border flex flex-col">
           <div className="flex justify-between items-center mb-4">
             <span className="chart-title text-[11px]">
               Circuit // {overview.metrics.track_name.slice(0, 3).toUpperCase()}
@@ -292,20 +325,62 @@ export default function TelemetryView({ overview }: TelemetryViewProps) {
               OPTIMAL
             </span>
           </div>
-          <div className="h-40 w-full flex items-center justify-center opacity-80">
-            <svg className="w-full h-full max-w-[200px]" viewBox="0 0 200 200">
-              <path
-                className="stroke-stone-800 stroke-[0.5]"
-                d="M0 0 L200 0 M0 50 L200 50 M0 100 L200 100 M0 150 L200 150 M0 200 L200 200 M50 0 L50 200 M100 0 L100 200 M150 0 L150 200"
-                strokeDasharray="1 3"
-              />
-              <path
-                className="stroke-stone-700 stroke-2"
-                d="M40 140 L60 140 L80 150 L100 145 L130 155 L160 140 L170 110 L150 80 L160 60 L140 40 L100 50 L70 30 L40 50 L20 80 L40 110 Z"
-                fill="none"
-              />
-              <path className="stroke-green-500 stroke-2" d="M40 140 L60 140 L80 150" fill="none" />
-              <circle className="fill-white" cx="80" cy="150" r="2.5" />
+          <div className="flex-1 w-full min-h-[250px] flex items-center justify-center overflow-hidden bg-stone-900/40 rounded-lg p-4">
+            <svg 
+              className="w-full h-full drop-shadow-md" 
+              viewBox="0 0 500 500" 
+              preserveAspectRatio="xMidYMid meet"
+            >
+              <defs>
+                <radialGradient id="card-glow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#334155" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="transparent" stopOpacity="0" />
+                </radialGradient>
+                <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+
+              <rect width="500" height="500" fill="url(#card-glow)" />
+
+              {bahrainPathD ? (
+                <>
+                  <path
+                    d={bahrainPathD}
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth="10"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    opacity="0.15"
+                    filter="url(#neon-glow)"
+                  />
+                  <path
+                    ref={trackPathRef}
+                    d={bahrainPathD}
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth="4"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    opacity="0.9"
+                  />
+                </>
+              ) : (
+                <path
+                  d="M50 365 L190 120 L335 360 L460 290"
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeWidth="4"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  opacity="0.5"
+                />
+              )}
             </svg>
           </div>
           <div className="flex justify-between mt-4 text-[7px] font-mono text-stone-500 border-t border-stone-800 pt-2">
