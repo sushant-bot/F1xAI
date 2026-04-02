@@ -642,7 +642,7 @@ export default function TrackComparisonView() {
                 rel="noreferrer"
                 className="text-[8px] font-mono text-stone-500 hover:text-stone-300"
               >
-                Source: julesr0y/f1-circuits-svg (CC BY 4.0)
+              APEX26 by SUSHANT CHAVAN
               </a>
             </div>
           ) : (
