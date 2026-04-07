@@ -103,7 +103,7 @@ export default function Home() {
               </div>
               <div className="text-stone-400 text-xs font-mono mb-4">{error ?? "Unknown error"}</div>
               <div className="text-stone-600 text-[10px] font-mono mb-4">
-                Ensure backend is running at http://localhost:8000
+                Ensure the backend API is running and reachable.
               </div>
               <button
                 onClick={handleRefresh}

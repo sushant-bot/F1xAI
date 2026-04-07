@@ -70,7 +70,10 @@ function resolveDefaultApiBase(): string {
 
 const DEFAULT_API_BASE = resolveDefaultApiBase();
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? DEFAULT_API_BASE;
+const configuredBase = process.env.NEXT_PUBLIC_API_URL ?? process.env.NEXT_PUBLIC_API_BASE;
+const API_BASE = configuredBase
+  ? configuredBase.replace(/\/+$/, '') + (configuredBase.endsWith('/api/v1') ? '' : '/api/v1')
+  : DEFAULT_API_BASE;
 
 type FetchRaceOptions = {
   timeoutMs?: number;
