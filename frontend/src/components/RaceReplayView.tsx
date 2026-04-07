@@ -96,7 +96,7 @@ function getAdjustedCoordinates(drivers: TrackMarker[], minDistance = 28): Track
   return adjusted.sort((a, b) => b.position - a.position);
 }
 
-const BACKEND_TRACK_URL = "/api/track?track=Bahrain_International_Circuit";
+const BACKEND_TRACK_URL = "/api/track?track=bahrain-1";
 
 const formatLapTime = (seconds: number): string => {
   if (!seconds || seconds <= 0) return "--";

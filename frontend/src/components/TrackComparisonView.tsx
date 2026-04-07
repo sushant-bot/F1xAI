@@ -43,14 +43,14 @@ const YEAR_TEXT_CLASSES: Record<number, string> = {
 
 const TRACK_SVG_BASE_URL = "/api/track?track=";
 const TRACK_LAYOUT_BY_NAME: Record<string, string> = {
-  Bahrain: "Bahrain_International_Circuit",
-  "Saudi Arabia": "Saudi_Aramco_Grand_Prix",
-  Australia: "Australian_Grand_Prix",
-  Monaco: "Monaco_Grand_Prix",
-  Spain: "Spanish_Grand_Prix",
-  "Great Britain": "British_Grand_Prix",
-  Italy: "Italian_Grand_Prix",
-  Belgium: "Belgian_Grand_Prix",
+  Bahrain: "bahrain-1",
+  "Saudi Arabia": "jeddah-1",
+  Australia: "australia-1",
+  Monaco: "monaco-1",
+  Spain: "barcelona-1",
+  "Great Britain": "silverstone-1",
+  Italy: "monza-1",
+  Belgium: "spa-1",
 };
 
 const formatLapTime = (seconds: number): string => {

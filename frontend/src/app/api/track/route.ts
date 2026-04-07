@@ -1,9 +1,9 @@
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const track = searchParams.get("track") || "Bahrain_International_Circuit";
+  const track = searchParams.get("track") || "bahrain-1";
 
   try {
-    const githubUrl = `https://raw.githubusercontent.com/f1tenth/f1tenth_racetracks/main/tracks/${track}/${track}.svg`;
+    const githubUrl = `https://raw.githubusercontent.com/julesr0y/f1-circuits-svg/main/circuits/white-outline/${track}.svg`;
     const response = await fetch(githubUrl);
 
     if (!response.ok) {
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     return new Response(svgContent, {
       headers: {
         "Content-Type": "image/svg+xml",
-        "Cache-Control": "public, max-age=86400", // Cache for 24 hours
+        "Cache-Control": "public, max-age=86400",
       },
     });
   } catch (error) {
