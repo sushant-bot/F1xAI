@@ -1,7 +1,10 @@
-import time
 import logging
-from typing import Dict, Optional, List, Tuple
+import pickle
+import re
+import time
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, Optional, List, Tuple
 
 import pandas as pd
 import numpy as np
@@ -34,8 +37,13 @@ from app.core.data.loader import (
 from app.core.data.cleaner import clean_laps
 from app.core.ml.features import engineer_features, prepare_train_test, compute_driver_pace
 from app.core.ml.models import train_models, XGBoostPredictor, RandomForestPredictor
+from app.config import CACHE_DIR
 
 logger = logging.getLogger(__name__)
+
+SESSION_CACHE_VERSION = 1
+SESSION_CACHE_DIR = CACHE_DIR.parent / "session_cache"
+SESSION_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class RaceService:
@@ -43,6 +51,48 @@ class RaceService:
     
     def __init__(self):
         self._sessions: Dict[str, dict] = {}
+
+    def _cache_slug(self, cache_key: str) -> str:
+        return re.sub(r"[^A-Za-z0-9]+", "_", cache_key).strip("_")
+
+    def _session_cache_path(self, cache_key: str) -> Path:
+        return SESSION_CACHE_DIR / f"{self._cache_slug(cache_key)}.bin"
+
+    def _load_session_cache(self, cache_key: str) -> Optional[dict]:
+        cache_path = self._session_cache_path(cache_key)
+        if not cache_path.exists():
+            return None
+
+        try:
+            with cache_path.open("rb") as cache_file:
+                payload = pickle.load(cache_file)
+        except Exception as exc:
+            logger.warning(f"Failed to read session cache {cache_path}: {exc}")
+            return None
+
+        if not isinstance(payload, dict):
+            return None
+
+        if payload.get("version") != SESSION_CACHE_VERSION:
+            return None
+
+        session_payload = payload.get("data")
+        if not isinstance(session_payload, dict):
+            return None
+
+        return session_payload
+
+    def _save_session_cache(self, cache_key: str, session_payload: dict) -> None:
+        cache_path = self._session_cache_path(cache_key)
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+        payload = {
+            "version": SESSION_CACHE_VERSION,
+            "data": session_payload,
+        }
+
+        with cache_path.open("wb") as cache_file:
+            pickle.dump(payload, cache_file, protocol=pickle.HIGHEST_PROTOCOL)
     
     def load_race(self, year: int, event: str, session_type: str = "Race") -> RaceLoadResponse:
         """Load race data from FastF1."""
@@ -51,20 +101,34 @@ class RaceService:
         
         cached = cache_key in self._sessions
         if not cached:
-            try:
-                session, laps, stats = load_race_session(year, event, session_type)
-                cleaned_laps = clean_laps(laps)
-                race_results = get_race_results(session)
-                pit_strategies = get_pit_strategies(session)
-                self._sessions[cache_key] = {
-                    "session": session,
-                    "stats": stats,
-                    "clean_laps": cleaned_laps,
-                    "race_results": race_results,
-                    "pit_strategies": pit_strategies,
-                }
-            except Exception as e:
-                raise ValueError(f"Failed to load session: {e}")
+            session_payload = self._load_session_cache(cache_key)
+
+            if session_payload is None:
+                try:
+                    session, laps, stats = load_race_session(year, event, session_type)
+                    cleaned_laps = clean_laps(laps)
+                    race_results = get_race_results(session)
+                    pit_strategies = get_pit_strategies(session)
+
+                    event_date = getattr(session.event, "EventDate", None)
+                    date_str = event_date.isoformat() if event_date is not None else datetime.now().isoformat()
+                    track_name = getattr(session.event, "Location", "Unknown Track")
+
+                    session_payload = {
+                        "stats": stats,
+                        "track_name": track_name,
+                        "date": date_str,
+                        "race_name": f"{event} {year}",
+                        "clean_laps": cleaned_laps,
+                        "race_results": race_results,
+                        "pit_strategies": pit_strategies,
+                    }
+                    self._save_session_cache(cache_key, session_payload)
+                except Exception as e:
+                    raise ValueError(f"Failed to load session: {e}")
+
+            self._sessions[cache_key] = session_payload
+            cached = True
         
         load_time_ms = int((time.time() - start_time) * 1000)
         race_name = f"{event} {year}"
@@ -83,21 +147,22 @@ class RaceService:
             raise ValueError(f"Session {session_id} not found.")
         
         session_payload = self._sessions[session_id]
-        session = session_payload["session"]
         stats = session_payload["stats"]
         laps_df: pd.DataFrame = session_payload["clean_laps"]
         results_df: pd.DataFrame = session_payload["race_results"]
         pit_df: pd.DataFrame = session_payload["pit_strategies"]
 
-        race_name = f"{stats.get('event', 'Unknown Race')} {stats.get('year', '')}".strip()
-        track_name = getattr(session.event, "Location", "Unknown Track")
-        date_value = getattr(session.event, "EventDate", None)
-        date_str = date_value.isoformat() if date_value is not None else datetime.now().isoformat()
+        race_name = session_payload.get(
+            "race_name",
+            f"{stats.get('event', 'Unknown Race')} {stats.get('year', '')}".strip(),
+        )
+        track_name = session_payload.get("track_name", stats.get("track_name", "Unknown Track"))
+        date_str = session_payload.get("date", datetime.now().isoformat())
 
         total_drivers = int(stats.get("num_drivers", 0))
         total_laps = int(stats.get("total_laps", 0))
         avg_lap_time = self._compute_average_lap_time_seconds(laps_df)
-        race_duration = self._compute_race_duration_seconds(session, results_df, laps_df, avg_lap_time, total_laps)
+        race_duration = self._compute_race_duration_seconds(results_df, laps_df, avg_lap_time, total_laps)
         
         metrics = RaceOverviewMetrics(
             race_name=race_name,
@@ -138,18 +203,17 @@ class RaceService:
 
     def _compute_race_duration_seconds(
         self,
-        session,
         results_df: pd.DataFrame,
         laps_df: pd.DataFrame,
         avg_lap_time: float,
         total_laps: int,
     ) -> float:
         """Compute race duration preferring official winner time, with robust fallbacks."""
-        # 1) Official result timing from FastF1 (most accurate).
+        # 1) Official result timing from FastF1 results (most accurate).
         try:
-            if hasattr(session, "results") and isinstance(session.results, pd.DataFrame):
-                winner_result = session.results[session.results["Position"] == 1]
-                if not winner_result.empty and "Time" in winner_result.columns:
+            if not results_df.empty and "Position" in results_df.columns and "Time" in results_df.columns:
+                winner_result = results_df[results_df["Position"] == 1]
+                if not winner_result.empty:
                     winner_time = winner_result.iloc[0].get("Time")
                     if pd.notna(winner_time):
                         seconds = float(pd.to_timedelta(winner_time).total_seconds())

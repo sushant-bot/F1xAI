@@ -185,6 +185,7 @@ def get_race_results(session: Session) -> pd.DataFrame:
         "Points",
         "GridPosition",
         "Status",
+        "Time",
     ]
     if "HeadshotUrl" in session.results.columns:
         base_columns.append("HeadshotUrl")
