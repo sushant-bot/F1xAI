@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import { useMemo, useState, useCallback } from "react";
 import type { RaceOverview } from "@/lib/api";
 import {
   CartesianGrid,
@@ -12,7 +12,7 @@ import {
   YAxis,
 } from "recharts";
 
-const BAHRAIN_LAYOUT_SVG_URL = "https://raw.githubusercontent.com/julesr0y/f1-circuits-svg/main/circuits/white-outline/bahrain-1.svg";
+const BAHRAIN_LAYOUT_SVG_URL = "/Bahrain_International_Circuit--Grand_Prix_Layout_with_DRS.svg";
 
 interface TelemetryViewProps {
   overview: RaceOverview;
@@ -100,37 +100,6 @@ const CustomChartTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 
 export default function TelemetryView({ overview }: TelemetryViewProps) {
   const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
-  const [bahrainPathD, setBahrainPathD] = useState<string>("");
-  const trackPathRef = useRef<SVGPathElement | null>(null);
-
-  useEffect(() => {
-    let isActive = true;
-
-    const loadBahrainLayout = async () => {
-      try {
-        const response = await fetch(BAHRAIN_LAYOUT_SVG_URL, { cache: "force-cache" });
-        if (!response.ok) return;
-
-        const svgText = await response.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(svgText, "image/svg+xml");
-        const firstPath = doc.querySelector("path");
-        const pathD = firstPath?.getAttribute("d");
-
-        if (isActive && pathD) {
-          setBahrainPathD(pathD);
-        }
-      } catch {
-        // Fallback drawing if remote layout cannot be fetched.
-      }
-    };
-
-    void loadBahrainLayout();
-
-    return () => {
-      isActive = false;
-    };
-  }, []);
 
   const handleDriverClick = useCallback((driver: string) => {
     setSelectedDriver((prev) => (prev === driver ? null : driver));
@@ -347,40 +316,16 @@ export default function TelemetryView({ overview }: TelemetryViewProps) {
 
               <rect width="500" height="500" fill="url(#card-glow)" />
 
-              {bahrainPathD ? (
-                <>
-                  <path
-                    d={bahrainPathD}
-                    fill="none"
-                    stroke="#ffffff"
-                    strokeWidth="10"
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                    opacity="0.15"
-                    filter="url(#neon-glow)"
-                  />
-                  <path
-                    ref={trackPathRef}
-                    d={bahrainPathD}
-                    fill="none"
-                    stroke="#ffffff"
-                    strokeWidth="4"
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                    opacity="0.9"
-                  />
-                </>
-              ) : (
-                <path
-                  d="M50 365 L190 120 L335 360 L460 290"
-                  fill="none"
-                  stroke="#ffffff"
-                  strokeWidth="4"
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  opacity="0.5"
-                />
-              )}
+              <image
+                href={BAHRAIN_LAYOUT_SVG_URL}
+                xlinkHref={BAHRAIN_LAYOUT_SVG_URL}
+                x="0"
+                y="0"
+                width="500"
+                height="500"
+                preserveAspectRatio="xMidYMid meet"
+                opacity="0.95"
+              />
             </svg>
           </div>
           <div className="flex justify-between mt-4 text-[7px] font-mono text-stone-500 border-t border-stone-800 pt-2">
