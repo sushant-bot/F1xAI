@@ -41,16 +41,16 @@ const YEAR_TEXT_CLASSES: Record<number, string> = {
   2025: "text-red-400",
 };
 
-const TRACK_SVG_BASE_URL = "https://raw.githubusercontent.com/julesr0y/f1-circuits-svg/main/circuits/white-outline";
+const TRACK_SVG_BASE_URL = "/api/track?track=";
 const TRACK_LAYOUT_BY_NAME: Record<string, string> = {
-  Bahrain: "bahrain-1",
-  "Saudi Arabia": "jeddah-1",
-  Australia: "melbourne-2",
-  Monaco: "monaco-6",
-  Spain: "catalunya-6",
-  "Great Britain": "silverstone-8",
-  Italy: "monza-7",
-  Belgium: "spa-francorchamps-4",
+  Bahrain: "Bahrain_International_Circuit",
+  "Saudi Arabia": "Saudi_Aramco_Grand_Prix",
+  Australia: "Australian_Grand_Prix",
+  Monaco: "Monaco_Grand_Prix",
+  Spain: "Spanish_Grand_Prix",
+  "Great Britain": "British_Grand_Prix",
+  Italy: "Italian_Grand_Prix",
+  Belgium: "Belgian_Grand_Prix",
 };
 
 const formatLapTime = (seconds: number): string => {
@@ -268,7 +268,7 @@ export default function TrackComparisonView() {
 
   const selectedTrackLayout = TRACK_LAYOUT_BY_NAME[selectedTrack];
   const selectedTrackSvgUrl = selectedTrackLayout
-    ? `${TRACK_SVG_BASE_URL}/${selectedTrackLayout}.svg`
+    ? `${TRACK_SVG_BASE_URL}${selectedTrackLayout}`
     : null;
 
   const availableTracks = [
