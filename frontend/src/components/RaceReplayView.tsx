@@ -96,8 +96,7 @@ function getAdjustedCoordinates(drivers: TrackMarker[], minDistance = 28): Track
   return adjusted.sort((a, b) => b.position - a.position);
 }
 
-const BAHRAIN_LAYOUT_SVG_URL =
-  "https://raw.githubusercontent.com/julesr0y/f1-circuits-svg/main/circuits/white-outline/bahrain-1.svg";
+const BACKEND_TRACK_URL = "/api/track?track=Bahrain_International_Circuit";
 
 const formatLapTime = (seconds: number): string => {
   if (!seconds || seconds <= 0) return "--";
@@ -198,20 +197,21 @@ export default function RaceReplayView({ overview }: RaceReplayViewProps) {
 
     const loadBahrainLayout = async () => {
       try {
-        const response = await fetch(BAHRAIN_LAYOUT_SVG_URL, { cache: "force-cache" });
-        if (!response.ok) return;
+        // Use backend API endpoint
+        const response = await fetch(BACKEND_TRACK_URL);
+        if (response.ok) {
+          const svgText = await response.text();
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(svgText, "image/svg+xml");
+          const firstPath = doc.querySelector("path");
+          const pathD = firstPath?.getAttribute("d");
 
-        const svgText = await response.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(svgText, "image/svg+xml");
-        const firstPath = doc.querySelector("path");
-        const pathD = firstPath?.getAttribute("d");
-
-        if (isActive && pathD) {
-          setBahrainPathD(pathD);
+          if (isActive && pathD) {
+            setBahrainPathD(pathD);
+          }
         }
-      } catch {
-        // Keep fallback drawing if remote layout cannot be fetched.
+      } catch (error) {
+        console.error("Track fetch failed:", error);
       }
     };
 
