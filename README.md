@@ -1,6 +1,6 @@
-# F1xAI
+# APEX26 
 
-F1xAI is an advanced Formula 1 data analytics, visualization, and race strategy simulation platform. It consumes telemetry data utilizing FastF1, runs machine learning predictions (XGBoost), and visualizes the results through an intuitive Next.js frontend interface representing race events, driver telemetry, stint strategies, tyre degradation, and gap analysis.
+Apex26 is an advanced Formula 1 data analytics, visualization, and race strategy simulation platform. It consumes telemetry data utilizing FastF1, runs machine learning predictions (XGBoost), and visualizes the results through an intuitive Next.js frontend interface representing race events, driver telemetry, stint strategies, tyre degradation, and gap analysis.
 
 ## Live Deployment
 
