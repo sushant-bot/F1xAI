@@ -51,6 +51,10 @@ export type RaceOverview = {
     best_lap_time_seconds: number;
     lap_number: number;
   }>;
+  lap_track_flags?: Array<{
+    lap_number: number;
+    condition: "yellow" | "vsc" | "sc";
+  }>;
 };
 
 function resolveDefaultApiBase(): string {

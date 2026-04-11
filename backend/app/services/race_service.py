@@ -34,6 +34,7 @@ from app.core.data.loader import (
     get_race_results,
     get_pit_strategies,
 )
+from app.core.data.track_flags import extract_lap_track_flags
 from app.core.data.cleaner import clean_laps
 from app.core.ml.features import engineer_features, prepare_train_test, compute_driver_pace
 from app.core.ml.models import train_models, XGBoostPredictor, RandomForestPredictor
@@ -41,7 +42,7 @@ from app.config import CACHE_DIR
 
 logger = logging.getLogger(__name__)
 
-SESSION_CACHE_VERSION = 1
+SESSION_CACHE_VERSION = 2
 SESSION_CACHE_DIR = CACHE_DIR.parent / "session_cache"
 SESSION_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -114,6 +115,8 @@ class RaceService:
                     date_str = event_date.isoformat() if event_date is not None else datetime.now().isoformat()
                     track_name = getattr(session.event, "Location", "Unknown Track")
 
+                    lap_track_flags = extract_lap_track_flags(session)
+
                     session_payload = {
                         "stats": stats,
                         "track_name": track_name,
@@ -122,6 +125,7 @@ class RaceService:
                         "clean_laps": cleaned_laps,
                         "race_results": race_results,
                         "pit_strategies": pit_strategies,
+                        "lap_track_flags": lap_track_flags,
                     }
                     self._save_session_cache(cache_key, session_payload)
                 except Exception as e:
@@ -179,7 +183,8 @@ class RaceService:
         pit_strategies = self._extract_pit_strategies(pit_df)
         tire_compounds = self._extract_tire_compounds(laps_df)
         best_laps = self._extract_best_laps(laps_df)
-        
+        lap_track_flags = session_payload.get("lap_track_flags") or []
+
         return RaceOverview(
             session_id=session_id,
             metrics=metrics,
@@ -188,6 +193,7 @@ class RaceService:
             pit_strategies=pit_strategies,
             tire_compounds=tire_compounds,
             best_laps=best_laps,
+            lap_track_flags=lap_track_flags,
         )
 
     def _compute_average_lap_time_seconds(self, laps_df: pd.DataFrame) -> float:

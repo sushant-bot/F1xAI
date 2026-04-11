@@ -550,6 +550,16 @@ export default function RaceReplayView({ overview }: RaceReplayViewProps) {
     return overview.pit_strategies.filter((p) => p.lap_number === currentLap);
   }, [overview.pit_strategies, currentLap]);
 
+  const lapTrackConditionByLap = useMemo(() => {
+    const map = new Map<number, "yellow" | "vsc" | "sc">();
+    for (const row of overview.lap_track_flags ?? []) {
+      map.set(row.lap_number, row.condition);
+    }
+    return map;
+  }, [overview.lap_track_flags]);
+
+  const currentTrackCondition = lapTrackConditionByLap.get(currentLap) ?? null;
+
   const driverProgressByCode = useMemo(() => {
     const progressMap = new Map<string, number>();
     if (currentPositions.length === 0) return progressMap;
@@ -558,27 +568,44 @@ export default function RaceReplayView({ overview }: RaceReplayViewProps) {
       nextLapPositions.map((driver) => [driver.driver_code, Math.max(0, driver.gap_to_leader ?? 0)]),
     );
 
-    const maxCurrentGap = Math.max(
-      ...currentPositions.map((driver) => Math.max(0, driver.gap_to_leader ?? 0)),
-      1,
-    );
-    const maxNextGap = Math.max(...nextLapPositions.map((driver) => Math.max(0, driver.gap_to_leader ?? 0)), 1);
-    const maxGap = Math.max(maxCurrentGap, maxNextGap, 1);
+    const leader = currentPositions[0];
+    const refLapTime =
+      leader?.lap_time && leader.lap_time > 30
+        ? leader.lap_time
+        : overview.metrics.avg_lap_time_seconds > 30
+          ? overview.metrics.avg_lap_time_seconds
+          : 90;
+
     const fieldSize = Math.max(currentPositions.length - 1, 1);
 
     currentPositions.forEach((driver, idx) => {
-      // Normalize by field spread so drivers are distributed along the full circuit.
+      if (!hasLapData) {
+        const rankOffset = (idx / fieldSize) * 0.02;
+        const normalizedRank = idx / fieldSize;
+        const progress = Math.max(0.01, Math.min(0.99, 0.98 - normalizedRank * 0.9 - rankOffset));
+        progressMap.set(driver.driver_code, progress);
+        return;
+      }
+
+      // Time-based spacing: gap to leader (seconds) → fraction of a lap along the circuit.
       const currentGap = Math.max(0, driver.gap_to_leader ?? 0);
       const nextGap = nextGapByCode.get(driver.driver_code) ?? currentGap;
       const gap = currentGap + (nextGap - currentGap) * lapPhase;
-      const normalizedGap = hasLapData ? Math.min(1, gap / maxGap) : idx / fieldSize;
-      const rankOffset = (idx / fieldSize) * 0.02;
-      const progress = Math.max(0.01, Math.min(0.99, 0.98 - normalizedGap * 0.9 - rankOffset));
+      const lapEquiv = Math.min(gap / refLapTime, 0.92);
+      let along = lapPhase - lapEquiv;
+      along = ((along % 1) + 1) % 1;
+      const progress = Math.max(0.02, Math.min(0.98, along));
       progressMap.set(driver.driver_code, progress);
     });
 
     return progressMap;
-  }, [currentPositions, nextLapPositions, lapPhase, hasLapData]);
+  }, [
+    currentPositions,
+    nextLapPositions,
+    lapPhase,
+    hasLapData,
+    overview.metrics.avg_lap_time_seconds,
+  ]);
 
   const trackMarkers = useMemo(() => {
     const baseMarkers = currentPositions.slice(0, 12).map((driver, idx) => {
@@ -820,11 +847,30 @@ export default function RaceReplayView({ overview }: RaceReplayViewProps) {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Track Visualization */}
         <div className="bg-surface-container border border-stone-800 p-4 instrument-border lg:col-span-3">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
             <span className="chart-title text-[11px]">Track Position</span>
-            <span className="text-[7px] font-mono text-green-500 bg-green-500/10 px-1 border border-green-500/20">
-              LAP {currentLap}
-            </span>
+            <div className="flex items-center gap-2">
+              {currentTrackCondition && (
+                <span
+                  className={`text-[7px] font-headline font-bold uppercase tracking-widest px-2 py-0.5 border ${
+                    currentTrackCondition === "sc"
+                      ? "text-amber-300 bg-amber-500/15 border-amber-500/40"
+                      : currentTrackCondition === "vsc"
+                        ? "text-amber-200 bg-amber-400/10 border-amber-400/35"
+                        : "text-yellow-300 bg-yellow-500/10 border-yellow-500/30"
+                  }`}
+                >
+                  {currentTrackCondition === "sc"
+                    ? "Safety Car"
+                    : currentTrackCondition === "vsc"
+                      ? "VSC"
+                      : "Yellow"}
+                </span>
+              )}
+              <span className="text-[7px] font-mono text-green-500 bg-green-500/10 px-1 border border-green-500/20">
+                LAP {currentLap}
+              </span>
+            </div>
           </div>
 
           {/* Track SVG — layout from julesr0y/f1-circuits-svg via /api/track */}

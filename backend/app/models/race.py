@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 from pydantic import BaseModel, Field, ConfigDict
 
 
@@ -42,6 +42,13 @@ class DriverBestLap(BaseModel):
     lap_number: int
 
 
+class LapTrackFlag(BaseModel):
+    """Per-lap track condition from FastF1 session.track_status (non-green only)."""
+
+    lap_number: int
+    condition: Literal["yellow", "vsc", "sc"]
+
+
 class RaceOverviewMetrics(BaseModel):
     race_name: str
     date: str
@@ -60,6 +67,7 @@ class RaceOverview(BaseModel):
     pit_strategies: List[PitStop]
     tire_compounds: List[TireCompound]
     best_laps: List[DriverBestLap]
+    lap_track_flags: List[LapTrackFlag] = Field(default_factory=list)
 
 
 class RaceLoadResponse(BaseModel):
@@ -77,6 +85,7 @@ class RaceOverviewResponse(BaseModel):
     pit_strategies: List[PitStop]
     tire_compounds: List[TireCompound]
     best_laps: List[DriverBestLap]
+    lap_track_flags: List[LapTrackFlag] = Field(default_factory=list)
 
 
 class ErrorResponse(BaseModel):

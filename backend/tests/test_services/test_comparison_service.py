@@ -95,6 +95,7 @@ def make_overview(year, finish_position, avg_lap_time):
                 lap_number=7,
             )
         ],
+        lap_track_flags=[],
     )
 
 
