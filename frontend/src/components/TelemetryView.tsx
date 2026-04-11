@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useCallback } from "react";
 import type { RaceOverview } from "@/lib/api";
+import { resolveF1CircuitLayoutId } from "@/lib/f1CircuitLayout";
 import {
   CartesianGrid,
   Line,
@@ -11,8 +12,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-
-const BAHRAIN_LAYOUT_SVG_URL = "/Bahrain_International_Circuit--Grand_Prix_Layout_with_DRS.svg";
 
 interface TelemetryViewProps {
   overview: RaceOverview;
@@ -100,6 +99,14 @@ const CustomChartTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 
 export default function TelemetryView({ overview }: TelemetryViewProps) {
   const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
+
+  const circuitSvgUrl = useMemo(() => {
+    const layoutId = resolveF1CircuitLayoutId(overview.metrics.track_name, {
+      date: overview.metrics.date,
+      raceName: overview.metrics.race_name,
+    });
+    return `/api/track?track=${encodeURIComponent(layoutId)}`;
+  }, [overview.metrics.track_name, overview.metrics.date, overview.metrics.race_name]);
 
   const handleDriverClick = useCallback((driver: string) => {
     setSelectedDriver((prev) => (prev === driver ? null : driver));
@@ -317,8 +324,8 @@ export default function TelemetryView({ overview }: TelemetryViewProps) {
               <rect width="500" height="500" fill="url(#card-glow)" />
 
               <image
-                href={BAHRAIN_LAYOUT_SVG_URL}
-                xlinkHref={BAHRAIN_LAYOUT_SVG_URL}
+                href={circuitSvgUrl}
+                xlinkHref={circuitSvgUrl}
                 x="0"
                 y="0"
                 width="500"

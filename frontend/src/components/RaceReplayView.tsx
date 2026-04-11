@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RaceOverview } from "@/lib/api";
+import { resolveF1CircuitLayoutId } from "@/lib/f1CircuitLayout";
 import {
   CartesianGrid,
   Line,
@@ -96,8 +97,6 @@ function getAdjustedCoordinates(drivers: TrackMarker[], minDistance = 28): Track
   return adjusted.sort((a, b) => b.position - a.position);
 }
 
-const BACKEND_TRACK_URL = "/api/track?track=bahrain-1";
-
 const formatLapTime = (seconds: number): string => {
   if (!seconds || seconds <= 0) return "--";
   const mins = Math.floor(seconds / 60);
@@ -180,7 +179,7 @@ export default function RaceReplayView({ overview }: RaceReplayViewProps) {
   const [playbackSpeed, setPlaybackSpeed] = useState<PlaybackSpeed>(1);
   const [chartMode, setChartMode] = useState<ChartMode>("absolute");
   const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
-  const [bahrainPathD, setBahrainPathD] = useState<string>("");
+  const [trackPathD, setTrackPathD] = useState<string>("");
   const [trackPathLength, setTrackPathLength] = useState(0);
   const trackPathRef = useRef<SVGPathElement | null>(null);
 
@@ -190,15 +189,24 @@ export default function RaceReplayView({ overview }: RaceReplayViewProps) {
   const [showLeaderboard, setShowLeaderboard] = useState(true);
 
   const totalLaps = Math.max(1, overview.metrics?.total_laps || 57);
-  const hasLapData = overview.lap_times && overview.lap_times.length > 0;       
+  const hasLapData = overview.lap_times && overview.lap_times.length > 0;
+
+  const circuitLayoutId = useMemo(
+    () =>
+      resolveF1CircuitLayoutId(overview.metrics.track_name, {
+        date: overview.metrics.date,
+        raceName: overview.metrics.race_name,
+      }),
+    [overview.metrics.track_name, overview.metrics.date, overview.metrics.race_name],
+  );
 
   useEffect(() => {
     let isActive = true;
 
-    const loadBahrainLayout = async () => {
+    const loadTrackLayout = async () => {
       try {
-        // Use backend API endpoint
-        const response = await fetch(BACKEND_TRACK_URL);
+        const url = `/api/track?track=${encodeURIComponent(circuitLayoutId)}`;
+        const response = await fetch(url);
         if (response.ok) {
           const svgText = await response.text();
           const parser = new DOMParser();
@@ -207,7 +215,7 @@ export default function RaceReplayView({ overview }: RaceReplayViewProps) {
           const pathD = firstPath?.getAttribute("d");
 
           if (isActive && pathD) {
-            setBahrainPathD(pathD);
+            setTrackPathD(pathD);
           }
         }
       } catch (error) {
@@ -215,12 +223,12 @@ export default function RaceReplayView({ overview }: RaceReplayViewProps) {
       }
     };
 
-    void loadBahrainLayout();
+    void loadTrackLayout();
 
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [circuitLayoutId]);
 
   useEffect(() => {
     if (!trackPathRef.current) return;
@@ -233,7 +241,7 @@ export default function RaceReplayView({ overview }: RaceReplayViewProps) {
     } catch {
       setTrackPathLength(0);
     }
-  }, [bahrainPathD]);
+  }, [trackPathD]);
 
   // Get sorted race results
   const sortedResults = useMemo(() => {
@@ -819,7 +827,7 @@ export default function RaceReplayView({ overview }: RaceReplayViewProps) {
             </span>
           </div>
 
-          {/* Track SVG Container - Bahrain GP from f1-circuits-svg */}
+          {/* Track SVG — layout from julesr0y/f1-circuits-svg via /api/track */}
           <div className="relative w-full overflow-hidden bg-stone-900" style={{ aspectRatio: "1273/900" }}>
             {/* Live Leaderboard Overlay */}
             {showLeaderboard && currentPositions.length > 0 && (
@@ -884,10 +892,10 @@ export default function RaceReplayView({ overview }: RaceReplayViewProps) {
               </defs>
               <rect width="500" height="500" fill="url(#track-glow)"/>
 
-              {bahrainPathD ? (
+              {trackPathD ? (
                 <>
                   <path
-                    d={bahrainPathD}
+                    d={trackPathD}
                     fill="none"
                     stroke="#3a3a3a"
                     strokeWidth="20"
@@ -897,7 +905,7 @@ export default function RaceReplayView({ overview }: RaceReplayViewProps) {
                   />
                   <path
                     ref={trackPathRef}
-                    d={bahrainPathD}
+                    d={trackPathD}
                     fill="none"
                     stroke="#151515"
                     strokeWidth="5"

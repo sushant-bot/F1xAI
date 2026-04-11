@@ -20,6 +20,7 @@ import {
   type TrackComparisonResponse,
   type TrendPredictionResponse,
 } from "@/lib/api";
+import { TRACK_COMPARISON_LAYOUT_BY_NAME } from "@/lib/f1CircuitLayout";
 
 type ViewMode = "comparison" | "prediction";
 const COMPARISON_ROWS_PER_PAGE = 12;
@@ -42,16 +43,6 @@ const YEAR_TEXT_CLASSES: Record<number, string> = {
 };
 
 const TRACK_SVG_BASE_URL = "/api/track?track=";
-const TRACK_LAYOUT_BY_NAME: Record<string, string> = {
-  Bahrain: "bahrain-1",
-  "Saudi Arabia": "jeddah-1",
-  Australia: "australia-1",
-  Monaco: "monaco-1",
-  Spain: "barcelona-1",
-  "Great Britain": "silverstone-1",
-  Italy: "monza-1",
-  Belgium: "spa-1",
-};
 
 const formatLapTime = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);
@@ -266,7 +257,7 @@ export default function TrackComparisonView() {
   const [prediction, setPrediction] = useState<TrendPredictionResponse | null>(null);
   const hasBootstrappedRef = useRef(false);
 
-  const selectedTrackLayout = TRACK_LAYOUT_BY_NAME[selectedTrack];
+  const selectedTrackLayout = TRACK_COMPARISON_LAYOUT_BY_NAME[selectedTrack];
   const selectedTrackSvgUrl = selectedTrackLayout
     ? `${TRACK_SVG_BASE_URL}${selectedTrackLayout}`
     : null;
