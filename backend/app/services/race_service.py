@@ -77,6 +77,38 @@ class RaceService:
         self._sessions[session_id] = self._prepare_memory_payload(session_payload)
         return session_payload
 
+    def _get_replay_telemetry(self, session_id: str) -> Optional[dict]:
+        """Lazy-load replay telemetry only when needed (not kept in memory)."""
+        disk_payload = self._load_session_cache(session_id)
+        if disk_payload is None:
+            return None
+        
+        replay_data = disk_payload.get("replay_telemetry")
+        if replay_data is None:
+            # If replay wasn't precomputed, compute it now on-demand
+            try:
+                cache_key = session_id
+                year, event, session_type = self._parse_session_id(cache_key)
+                session, laps, stats = load_race_session(year, event, session_type, load_telemetry=True)
+                replay_data = build_replay_telemetry(session)
+            except Exception as e:
+                logger.warning(f"Failed to compute replay telemetry for {session_id}: {e}")
+                replay_data = None
+        
+        return replay_data
+
+    def _parse_session_id(self, session_id: str) -> tuple:
+        """Parse year, event, session_type from cache key."""
+        parts = session_id.rsplit("_", 1)
+        if len(parts) == 2:
+            session_type = parts[1]
+            rest = parts[0].rsplit("_", 1)
+            if len(rest) == 2:
+                year = int(rest[0])
+                event = rest[1]
+                return year, event, session_type
+        return 2023, "Bahrain Grand Prix", "Race"
+
     def _cache_slug(self, cache_key: str) -> str:
         return re.sub(r"[^A-Za-z0-9]+", "_", cache_key).strip("_")
 
@@ -130,8 +162,12 @@ class RaceService:
 
             if session_payload is None:
                 try:
-                    session, laps, stats = load_race_session(year, event, session_type)
+                    session, laps, stats = load_race_session(year, event, session_type, load_telemetry=False)
                     cleaned_laps = clean_laps(laps)
+                    
+                    # Sample laps to reduce memory (keep every 3rd lap for memory efficiency)
+                    sampled_laps = cleaned_laps.iloc[::3].copy() if len(cleaned_laps) > 100 else cleaned_laps
+                    
                     race_results = get_race_results(session)
                     pit_strategies = get_pit_strategies(session)
 
@@ -141,22 +177,19 @@ class RaceService:
 
                     lap_track_flags = extract_lap_track_flags(session)
 
-                    try:
-                        replay_payload = build_replay_telemetry(session)
-                    except Exception as exc:
-                        logger.warning("build_replay_telemetry failed: %s", exc)
-                        replay_payload = None
+                    # Don't load replay telemetry by default - lazy load on-demand
+                    replay_payload = None
 
                     session_payload = {
                         "stats": stats,
                         "track_name": track_name,
                         "date": date_str,
                         "race_name": f"{event} {year}",
-                        "clean_laps": cleaned_laps,
+                        "clean_laps": sampled_laps,
                         "race_results": race_results,
                         "pit_strategies": pit_strategies,
                         "lap_track_flags": lap_track_flags,
-                        "replay_telemetry": replay_payload,
+                        "replay_telemetry": None,
                     }
                     self._save_session_cache(cache_key, session_payload)
                 except Exception as e:
@@ -216,11 +249,8 @@ class RaceService:
         best_laps = self._extract_best_laps(laps_df)
         lap_track_flags = session_payload.get("lap_track_flags") or []
 
-        raw_replay = session_payload.get("replay_telemetry")
-        if raw_replay is None:
-            disk_payload = self._load_session_cache(session_id)
-            if disk_payload is not None:
-                raw_replay = disk_payload.get("replay_telemetry")
+        # Lazy-load replay telemetry only on demand
+        raw_replay = self._get_replay_telemetry(session_id)
 
         replay_telemetry = None
         if raw_replay:

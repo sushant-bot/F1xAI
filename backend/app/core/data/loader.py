@@ -27,7 +27,8 @@ if FASTF1_CACHE_ENABLED:
 def load_race(
     year: int,
     event: str,
-    session_type: str = "Race"
+    session_type: str = "Race",
+    load_telemetry: bool = False
 ) -> Tuple[Session, pd.DataFrame, Dict]:
     """
     Load F1 race session data from FastF1.
@@ -36,6 +37,7 @@ def load_race(
         year: Race year (e.g., 2023)
         event: Event name (e.g., "Bahrain Grand Prix")
         session_type: Session type, typically "Race"
+        load_telemetry: Whether to load telemetry (memory-intensive, default False)
         
     Returns:
         session: FastF1 Session object
@@ -48,10 +50,10 @@ def load_race(
         # Load session
         session = fastf1.get_session(year, event, session_type)
         
-        # Load all data
+        # Load data (avoid telemetry by default to save memory)
         session.load(
             laps=True,           # Lap timing + session status
-            telemetry=True,      # Race replay: SessionTime / RelativeDistance traces
+            telemetry=load_telemetry,  # ONLY load if explicitly requested
             weather=False,       # Not used in current feature set
             messages=True,       # Needed to properly populate deletion-related lap flags
         )
