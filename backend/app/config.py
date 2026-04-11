@@ -1,8 +1,14 @@
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / "data"
-CACHE_DIR = DATA_DIR / "cache"
+
+# Use /tmp on Render (production), local ./data on development
+if os.environ.get('RENDER') == 'true':
+    CACHE_DIR = Path("/tmp/f1_cache")
+else:
+    CACHE_DIR = DATA_DIR / "cache"
 
 # Create cache directory if it doesn't exist
 CACHE_DIR.mkdir(parents=True, exist_ok=True)

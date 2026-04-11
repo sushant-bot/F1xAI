@@ -8,8 +8,6 @@ from pathlib import Path
 from typing import Dict, Tuple, Optional
 
 import pandas as pd
-import fastf1
-from fastf1.core import Session
 
 import sys
 from pathlib import Path
@@ -19,9 +17,17 @@ from app.config import CACHE_DIR, FASTF1_CACHE_ENABLED, PRIMARY_RACE, DEBUG_MODE
 
 logger = logging.getLogger(__name__)
 
-# Configure FastF1 caching
-if FASTF1_CACHE_ENABLED:
-    fastf1.Cache.enable_cache(str(CACHE_DIR))
+_fastf1_initialized = False
+
+def _init_fastf1():
+    """Initialize FastF1 cache on first use (lazy load)."""
+    global _fastf1_initialized
+    if not _fastf1_initialized:
+        import fastf1
+        if FASTF1_CACHE_ENABLED:
+            fastf1.Cache.enable_cache(str(CACHE_DIR))
+            logger.info(f"FastF1 cache enabled at {CACHE_DIR}")
+        _fastf1_initialized = True
 
 
 def load_race(
@@ -29,7 +35,7 @@ def load_race(
     event: str,
     session_type: str = "Race",
     load_telemetry: bool = False
-) -> Tuple[Session, pd.DataFrame, Dict]:
+) -> Tuple["fastf1.core.Session", pd.DataFrame, Dict]:
     """
     Load F1 race session data from FastF1.
     
@@ -44,6 +50,10 @@ def load_race(
         laps: DataFrame of all laps (includes pit laps for strategy analysis)
         stats: Dictionary of basic race statistics
     """
+    _init_fastf1()  # Lazy-load FastF1 on first use
+    import fastf1  # Import only when needed
+    from fastf1.core import Session
+    
     logger.info(f"Loading {year} {event} {session_type}...")
     
     try:
@@ -87,7 +97,7 @@ def load_race(
 
 
 def get_driver_laps(
-    session: Session,
+    session: "fastf1.core.Session",
     driver: str,
     exclude_pit_laps: bool = False
 ) -> pd.DataFrame:
@@ -110,7 +120,7 @@ def get_driver_laps(
     return laps.reset_index(drop=True)
 
 
-def get_pit_strategies(session: Session) -> pd.DataFrame:
+def get_pit_strategies(session: "fastf1.core.Session") -> pd.DataFrame:
     """
     Extract pit strategies (stints, tire compounds, lap counts).
     
@@ -168,7 +178,7 @@ def get_pit_strategies(session: Session) -> pd.DataFrame:
     return strategy_df
 
 
-def get_race_results(session: Session) -> pd.DataFrame:
+def get_race_results(session: "fastf1.core.Session") -> pd.DataFrame:
     """
     Extract race results (finishing positions, points, gaps).
     
@@ -206,7 +216,7 @@ def get_race_results(session: Session) -> pd.DataFrame:
     return results
 
 
-def save_session_cache(session: Session, output_path: Path) -> None:
+def save_session_cache(session: "fastf1.core.Session", output_path: Path) -> None:
     """
     Save session data locally for reproducibility and offline use.
     
