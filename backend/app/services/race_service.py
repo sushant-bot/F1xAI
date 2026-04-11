@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, List, Tuple
 
+from cachetools import TTLCache as BoundedTTLCache
 import pandas as pd
 import numpy as np
 
@@ -45,6 +46,7 @@ from app.config import CACHE_DIR
 logger = logging.getLogger(__name__)
 
 SESSION_CACHE_VERSION = 3
+SESSION_CACHE_MAXSIZE = 3
 SESSION_CACHE_DIR = CACHE_DIR.parent / "session_cache"
 SESSION_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -53,7 +55,27 @@ class RaceService:
     """Service for race data operations."""
     
     def __init__(self):
-        self._sessions: Dict[str, dict] = {}
+        self._sessions: Dict[str, dict] = BoundedTTLCache(
+            maxsize=SESSION_CACHE_MAXSIZE,
+            ttl=CACHE_TTL_SECONDS,
+        )
+
+    def _prepare_memory_payload(self, session_payload: dict) -> dict:
+        memory_payload = dict(session_payload)
+        memory_payload.pop("replay_telemetry", None)
+        return memory_payload
+
+    def _get_session_payload(self, session_id: str) -> Optional[dict]:
+        session_payload = self._sessions.get(session_id)
+        if session_payload is not None:
+            return session_payload
+
+        session_payload = self._load_session_cache(session_id)
+        if session_payload is None:
+            return None
+
+        self._sessions[session_id] = self._prepare_memory_payload(session_payload)
+        return session_payload
 
     def _cache_slug(self, cache_key: str) -> str:
         return re.sub(r"[^A-Za-z0-9]+", "_", cache_key).strip("_")
@@ -140,7 +162,7 @@ class RaceService:
                 except Exception as e:
                     raise ValueError(f"Failed to load session: {e}")
 
-            self._sessions[cache_key] = session_payload
+            self._sessions[cache_key] = self._prepare_memory_payload(session_payload)
             cached = True
         
         load_time_ms = int((time.time() - start_time) * 1000)
@@ -156,10 +178,10 @@ class RaceService:
     
     def get_race_overview(self, session_id: str) -> RaceOverview:
         """Get race overview data."""
-        if session_id not in self._sessions:
+        session_payload = self._get_session_payload(session_id)
+        if session_payload is None:
             raise ValueError(f"Session {session_id} not found.")
-        
-        session_payload = self._sessions[session_id]
+
         stats = session_payload["stats"]
         laps_df: pd.DataFrame = session_payload["clean_laps"]
         results_df: pd.DataFrame = session_payload["race_results"]
@@ -195,6 +217,11 @@ class RaceService:
         lap_track_flags = session_payload.get("lap_track_flags") or []
 
         raw_replay = session_payload.get("replay_telemetry")
+        if raw_replay is None:
+            disk_payload = self._load_session_cache(session_id)
+            if disk_payload is not None:
+                raw_replay = disk_payload.get("replay_telemetry")
+
         replay_telemetry = None
         if raw_replay:
             try:
@@ -387,10 +414,10 @@ class RaceService:
 
     def get_predictions(self, session_id: str, model_type: str = "xgboost") -> PredictionResponse:
         """Get ML predictions for lap times."""
-        if session_id not in self._sessions:
+        session_payload = self._get_session_payload(session_id)
+        if session_payload is None:
             raise ValueError(f"Session {session_id} not found.")
 
-        session_payload = self._sessions[session_id]
         laps_df: pd.DataFrame = session_payload["clean_laps"]
         results_df: pd.DataFrame = session_payload["race_results"]
 
@@ -460,7 +487,9 @@ class RaceService:
 
     def _train_models(self, session_id: str) -> None:
         """Train ML models for a session."""
-        session_payload = self._sessions[session_id]
+        session_payload = self._get_session_payload(session_id)
+        if session_payload is None:
+            raise ValueError(f"Session {session_id} not found.")
         laps_df: pd.DataFrame = session_payload["clean_laps"]
         results_df: pd.DataFrame = session_payload["race_results"]
 
@@ -487,10 +516,10 @@ class RaceService:
 
     def get_driver_analysis(self, session_id: str, driver_code: str) -> DriverAnalysisResponse:
         """Get detailed analysis for a specific driver."""
-        if session_id not in self._sessions:
+        session_payload = self._get_session_payload(session_id)
+        if session_payload is None:
             raise ValueError(f"Session {session_id} not found.")
 
-        session_payload = self._sessions[session_id]
         laps_df: pd.DataFrame = session_payload["clean_laps"]
         results_df: pd.DataFrame = session_payload["race_results"]
         pit_df: pd.DataFrame = session_payload["pit_strategies"]
@@ -604,9 +633,9 @@ class RaceService:
 
     def get_drivers_list(self, session_id: str) -> List[str]:
         """Get list of drivers in a session."""
-        if session_id not in self._sessions:
+        session_payload = self._get_session_payload(session_id)
+        if session_payload is None:
             raise ValueError(f"Session {session_id} not found.")
 
-        session_payload = self._sessions[session_id]
         laps_df: pd.DataFrame = session_payload["clean_laps"]
         return list(laps_df["Driver"].unique())
