@@ -41,7 +41,7 @@ from app.core.data.telemetry_replay import build_replay_telemetry
 from app.core.data.cleaner import clean_laps
 from app.core.ml.features import engineer_features, prepare_train_test, compute_driver_pace
 from app.core.ml.models import train_models, XGBoostPredictor, RandomForestPredictor
-from app.config import CACHE_DIR
+from app.config import CACHE_DIR, CACHE_TTL_SECONDS
 
 logger = logging.getLogger(__name__)
 
