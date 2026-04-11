@@ -51,7 +51,7 @@ def load_race(
         # Load all data
         session.load(
             laps=True,           # Lap timing + session status
-            telemetry=False,     # Not needed for current dashboard and model features
+            telemetry=True,      # Race replay: SessionTime / RelativeDistance traces
             weather=False,       # Not used in current feature set
             messages=True,       # Needed to properly populate deletion-related lap flags
         )

@@ -55,6 +55,18 @@ export type RaceOverview = {
     lap_number: number;
     condition: "yellow" | "vsc" | "sc";
   }>;
+  /** FastF1 telemetry snapshot for race replay (SessionTime → RelativeDistance). */
+  replay_telemetry?: {
+    leader_code: string;
+    leader_lap_timings: Array<{ lap: number; start: number; dur: number }>;
+    drivers: Record<
+      string,
+      {
+        t: number[];
+        rel_dist: number[];
+      }
+    >;
+  };
 };
 
 function resolveDefaultApiBase(): string {

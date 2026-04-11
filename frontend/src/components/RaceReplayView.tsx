@@ -97,6 +97,47 @@ function getAdjustedCoordinates(drivers: TrackMarker[], minDistance = 28): Track
   return adjusted.sort((a, b) => b.position - a.position);
 }
 
+/** Interpolate FastF1 RelativeDistance at a session clock time (seconds). */
+function interpRelDist(tArr: number[], rdArr: number[], sessionSeconds: number): number {
+  if (tArr.length === 0 || rdArr.length !== tArr.length) return 0.5;
+  const T = sessionSeconds;
+  if (T <= tArr[0]) return rdArr[0];
+  const last = tArr.length - 1;
+  if (T >= tArr[last]) return rdArr[last];
+  let lo = 0;
+  let hi = last;
+  while (lo < hi - 1) {
+    const mid = (lo + hi) >> 1;
+    if (tArr[mid] <= T) lo = mid;
+    else hi = mid;
+  }
+  const t0 = tArr[lo];
+  const t1 = tArr[hi];
+  const r0 = rdArr[lo];
+  const r1 = rdArr[hi];
+  if (t1 <= t0) return r0;
+  const a = (T - t0) / (t1 - t0);
+  return r0 + a * (r1 - r0);
+}
+
+/** Map UI lap + phase to session seconds using the race leader's lap clock (telemetry sync). */
+function sessionTimeFromLeaderTimings(
+  timings: Array<{ lap: number; start: number; dur: number }>,
+  currentLap: number,
+  lapPhase: number,
+): number | null {
+  if (!timings.length) return null;
+  const row = timings.find((x) => x.lap === currentLap);
+  if (row && row.dur > 0) {
+    return row.start + lapPhase * row.dur;
+  }
+  const sorted = [...timings].sort((a, b) => a.lap - b.lap);
+  let guess = sorted.find((x) => x.lap >= currentLap);
+  if (!guess) guess = sorted[sorted.length - 1];
+  if (!guess || guess.dur <= 0) return null;
+  return guess.start + lapPhase * guess.dur;
+}
+
 const formatLapTime = (seconds: number): string => {
   if (!seconds || seconds <= 0) return "--";
   const mins = Math.floor(seconds / 60);
@@ -564,6 +605,19 @@ export default function RaceReplayView({ overview }: RaceReplayViewProps) {
     const progressMap = new Map<string, number>();
     if (currentPositions.length === 0) return progressMap;
 
+    const replay = overview.replay_telemetry;
+    const leaderTimings =
+      replay?.leader_lap_timings?.map((x) => ({
+        lap: Math.round(x.lap),
+        start: x.start,
+        dur: x.dur,
+      })) ?? [];
+
+    const sessionT =
+      replay && leaderTimings.length > 0
+        ? sessionTimeFromLeaderTimings(leaderTimings, currentLap, lapPhase)
+        : null;
+
     const nextGapByCode = new Map(
       nextLapPositions.map((driver) => [driver.driver_code, Math.max(0, driver.gap_to_leader ?? 0)]),
     );
@@ -579,6 +633,22 @@ export default function RaceReplayView({ overview }: RaceReplayViewProps) {
     const fieldSize = Math.max(currentPositions.length - 1, 1);
 
     currentPositions.forEach((driver, idx) => {
+      if (replay && sessionT !== null && replay.drivers) {
+        const trace = replay.drivers[driver.driver_code];
+        const tArr = trace?.t;
+        const rdArr = trace?.rel_dist;
+        if (
+          tArr &&
+          rdArr &&
+          tArr.length > 1 &&
+          tArr.length === rdArr.length
+        ) {
+          const rd = interpRelDist(tArr, rdArr, sessionT);
+          progressMap.set(driver.driver_code, Math.max(0.02, Math.min(0.98, rd)));
+          return;
+        }
+      }
+
       if (!hasLapData) {
         const rankOffset = (idx / fieldSize) * 0.02;
         const normalizedRank = idx / fieldSize;
@@ -587,15 +657,13 @@ export default function RaceReplayView({ overview }: RaceReplayViewProps) {
         return;
       }
 
-      // Time-based spacing: gap to leader (seconds) → fraction of a lap along the circuit.
       const currentGap = Math.max(0, driver.gap_to_leader ?? 0);
       const nextGap = nextGapByCode.get(driver.driver_code) ?? currentGap;
       const gap = currentGap + (nextGap - currentGap) * lapPhase;
       const lapEquiv = Math.min(gap / refLapTime, 0.92);
       let along = lapPhase - lapEquiv;
       along = ((along % 1) + 1) % 1;
-      const progress = Math.max(0.02, Math.min(0.98, along));
-      progressMap.set(driver.driver_code, progress);
+      progressMap.set(driver.driver_code, Math.max(0.02, Math.min(0.98, along)));
     });
 
     return progressMap;
@@ -604,7 +672,9 @@ export default function RaceReplayView({ overview }: RaceReplayViewProps) {
     nextLapPositions,
     lapPhase,
     hasLapData,
+    currentLap,
     overview.metrics.avg_lap_time_seconds,
+    overview.replay_telemetry,
   ]);
 
   const trackMarkers = useMemo(() => {

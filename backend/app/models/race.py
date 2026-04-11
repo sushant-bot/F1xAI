@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 from pydantic import BaseModel, Field, ConfigDict
 
 
@@ -49,6 +49,29 @@ class LapTrackFlag(BaseModel):
     condition: Literal["yellow", "vsc", "sc"]
 
 
+class ReplayLapTiming(BaseModel):
+    """Leader lap clock: session-time span used to sync replay scrubber to telemetry."""
+
+    lap: float
+    start: float
+    dur: float
+
+
+class ReplayDriverTrace(BaseModel):
+    """Downsampled SessionTime (s) → RelativeDistance (0..1) for one driver."""
+
+    t: List[float]
+    rel_dist: List[float]
+
+
+class RaceReplayTelemetry(BaseModel):
+    """FastF1 telemetry snapshot for web race replay (cf. IAmTomShaw/f1-race-replay)."""
+
+    leader_code: str
+    leader_lap_timings: List[ReplayLapTiming]
+    drivers: Dict[str, ReplayDriverTrace]
+
+
 class RaceOverviewMetrics(BaseModel):
     race_name: str
     date: str
@@ -68,6 +91,7 @@ class RaceOverview(BaseModel):
     tire_compounds: List[TireCompound]
     best_laps: List[DriverBestLap]
     lap_track_flags: List[LapTrackFlag] = Field(default_factory=list)
+    replay_telemetry: Optional[RaceReplayTelemetry] = None
 
 
 class RaceLoadResponse(BaseModel):
@@ -86,6 +110,7 @@ class RaceOverviewResponse(BaseModel):
     tire_compounds: List[TireCompound]
     best_laps: List[DriverBestLap]
     lap_track_flags: List[LapTrackFlag] = Field(default_factory=list)
+    replay_telemetry: Optional[RaceReplayTelemetry] = None
 
 
 class ErrorResponse(BaseModel):

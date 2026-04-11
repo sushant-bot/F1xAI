@@ -32,6 +32,7 @@ env/
 *.ff1pkl
 cache/
 **/cache/
+backend/data/cache/
 fastf1_http_cache.sqlite
 
 # IDE

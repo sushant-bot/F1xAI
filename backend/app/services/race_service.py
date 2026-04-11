@@ -17,6 +17,7 @@ from app.models.race import (
     PitStop,
     TireCompound,
     DriverBestLap,
+    RaceReplayTelemetry,
     RaceLoadResponse,
     # Predictions
     PredictionResponse,
@@ -35,6 +36,7 @@ from app.core.data.loader import (
     get_pit_strategies,
 )
 from app.core.data.track_flags import extract_lap_track_flags
+from app.core.data.telemetry_replay import build_replay_telemetry
 from app.core.data.cleaner import clean_laps
 from app.core.ml.features import engineer_features, prepare_train_test, compute_driver_pace
 from app.core.ml.models import train_models, XGBoostPredictor, RandomForestPredictor
@@ -42,7 +44,7 @@ from app.config import CACHE_DIR
 
 logger = logging.getLogger(__name__)
 
-SESSION_CACHE_VERSION = 2
+SESSION_CACHE_VERSION = 3
 SESSION_CACHE_DIR = CACHE_DIR.parent / "session_cache"
 SESSION_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -117,6 +119,12 @@ class RaceService:
 
                     lap_track_flags = extract_lap_track_flags(session)
 
+                    try:
+                        replay_payload = build_replay_telemetry(session)
+                    except Exception as exc:
+                        logger.warning("build_replay_telemetry failed: %s", exc)
+                        replay_payload = None
+
                     session_payload = {
                         "stats": stats,
                         "track_name": track_name,
@@ -126,6 +134,7 @@ class RaceService:
                         "race_results": race_results,
                         "pit_strategies": pit_strategies,
                         "lap_track_flags": lap_track_flags,
+                        "replay_telemetry": replay_payload,
                     }
                     self._save_session_cache(cache_key, session_payload)
                 except Exception as e:
@@ -185,6 +194,14 @@ class RaceService:
         best_laps = self._extract_best_laps(laps_df)
         lap_track_flags = session_payload.get("lap_track_flags") or []
 
+        raw_replay = session_payload.get("replay_telemetry")
+        replay_telemetry = None
+        if raw_replay:
+            try:
+                replay_telemetry = RaceReplayTelemetry.model_validate(raw_replay)
+            except Exception as exc:
+                logger.warning("replay_telemetry invalid in session cache: %s", exc)
+
         return RaceOverview(
             session_id=session_id,
             metrics=metrics,
@@ -194,6 +211,7 @@ class RaceService:
             tire_compounds=tire_compounds,
             best_laps=best_laps,
             lap_track_flags=lap_track_flags,
+            replay_telemetry=replay_telemetry,
         )
 
     def _compute_average_lap_time_seconds(self, laps_df: pd.DataFrame) -> float:
