@@ -1,4 +1,5 @@
 import logging
+import os
 import pickle
 import re
 import time
@@ -48,7 +49,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 SESSION_CACHE_VERSION = 3
-SESSION_CACHE_MAXSIZE = 3
+SESSION_CACHE_MAXSIZE = int(os.environ.get("SESSION_CACHE_MAXSIZE", "1"))
 SESSION_CACHE_DIR = CACHE_DIR.parent / "session_cache"
 SESSION_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -66,6 +67,43 @@ class RaceService:
         memory_payload = dict(session_payload)
         memory_payload.pop("replay_telemetry", None)
         return memory_payload
+
+    def _optimize_laps_for_runtime(self, laps_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Keep only columns needed by API features and downcast dtypes.
+        This avoids caching heavy FastF1 lap objects in low-memory environments.
+        """
+        required_columns = [
+            "Driver",
+            "LapNumber",
+            "LapTime",
+            "Compound",
+            "TyreLife",
+            "Position",
+            "Stint",
+            "PitInTime",
+            "FreshTyre",
+        ]
+
+        available_columns = [col for col in required_columns if col in laps_df.columns]
+        optimized = laps_df[available_columns].copy()
+
+        if "Driver" in optimized.columns:
+            optimized["Driver"] = optimized["Driver"].astype("category")
+        if "Compound" in optimized.columns:
+            optimized["Compound"] = optimized["Compound"].astype("category")
+        if "LapNumber" in optimized.columns:
+            optimized["LapNumber"] = pd.to_numeric(optimized["LapNumber"], errors="coerce").astype("Int16")
+        if "TyreLife" in optimized.columns:
+            optimized["TyreLife"] = pd.to_numeric(optimized["TyreLife"], errors="coerce").astype("Int16")
+        if "Position" in optimized.columns:
+            optimized["Position"] = pd.to_numeric(optimized["Position"], errors="coerce").astype("Int16")
+        if "Stint" in optimized.columns:
+            optimized["Stint"] = pd.to_numeric(optimized["Stint"], errors="coerce").astype("Int16")
+        if "FreshTyre" in optimized.columns:
+            optimized["FreshTyre"] = optimized["FreshTyre"].fillna(False).astype("bool")
+
+        return optimized
 
     def _get_session_payload(self, session_id: str) -> Optional[dict]:
         session_payload = self._sessions.get(session_id)
@@ -169,6 +207,7 @@ class RaceService:
                     
                     # Sample laps to reduce memory (keep every 3rd lap for memory efficiency)
                     sampled_laps = cleaned_laps.iloc[::3].copy() if len(cleaned_laps) > 100 else cleaned_laps
+                    sampled_laps = self._optimize_laps_for_runtime(sampled_laps)
                     
                     race_results = get_race_results(session)
                     pit_strategies = get_pit_strategies(session)
