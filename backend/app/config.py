@@ -18,7 +18,7 @@ PROJECT_NAME = "Apex26 API"
 VERSION = "0.1.0"
 DESCRIPTION = "FastAPI backend for F1 race analysis and predictions"
 API_V1_PREFIX = "/api/v1"
-DEBUG_MODE = True
+DEBUG_MODE = os.environ.get("DEBUG_MODE", "false").lower() == "true"
 
 # CORS settings
 CORS_ORIGINS = [

@@ -1,0 +1,11 @@
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.git/
+.cursor/
+agent-transcripts/
+backend/tests/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/

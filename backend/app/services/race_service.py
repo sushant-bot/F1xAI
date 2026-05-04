@@ -4,7 +4,7 @@ import re
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional, List, Tuple
+from typing import Any, Dict, Optional, List, TYPE_CHECKING
 
 from cachetools import TTLCache as BoundedTTLCache
 import pandas as pd
@@ -39,9 +39,11 @@ from app.core.data.loader import (
 from app.core.data.track_flags import extract_lap_track_flags
 from app.core.data.telemetry_replay import build_replay_telemetry
 from app.core.data.cleaner import clean_laps
-from app.core.ml.features import engineer_features, prepare_train_test, compute_driver_pace
-from app.core.ml.models import train_models, XGBoostPredictor, RandomForestPredictor
+from app.core.ml.features import engineer_features, prepare_train_test
 from app.config import CACHE_DIR, CACHE_TTL_SECONDS
+
+if TYPE_CHECKING:
+    from app.core.ml.models import RandomForestPredictor, XGBoostPredictor
 
 logger = logging.getLogger(__name__)
 
@@ -455,8 +457,8 @@ class RaceService:
         if "xgb_model" not in session_payload or "rf_model" not in session_payload:
             self._train_models(session_id)
 
-        xgb_model: XGBoostPredictor = session_payload["xgb_model"]
-        rf_model: RandomForestPredictor = session_payload["rf_model"]
+        xgb_model: Any = session_payload["xgb_model"]
+        rf_model: Any = session_payload["rf_model"]
         feat_df: pd.DataFrame = session_payload["feature_df"]
         feature_cols: List[str] = session_payload["feature_cols"]
 
@@ -517,6 +519,9 @@ class RaceService:
 
     def _train_models(self, session_id: str) -> None:
         """Train ML models for a session."""
+        # Import heavy ML stack only when predictions are requested.
+        from app.core.ml.models import train_models
+
         session_payload = self._get_session_payload(session_id)
         if session_payload is None:
             raise ValueError(f"Session {session_id} not found.")
