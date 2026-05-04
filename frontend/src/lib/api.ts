@@ -75,6 +75,13 @@ function resolveDefaultApiBase(): string {
   }
 
   const { hostname, port } = window.location;
+  const isLocalHost = hostname === "localhost" || hostname === "127.0.0.1";
+
+  if (!isLocalHost) {
+    // Production fallback when NEXT_PUBLIC_API_URL is not configured.
+    return "https://f1xai.onrender.com/api/v1";
+  }
+
   const numericPort = Number(port);
   const derivedBackendPort =
     Number.isFinite(numericPort) && numericPort >= 3000 && numericPort < 4000
@@ -133,7 +140,8 @@ export async function fetchOverviewRace(
   sessionType = "Race",
   options: FetchRaceOptions = {},
 ): Promise<RaceOverview> {
-  const timeoutMs = options.timeoutMs ?? 30000;
+  // First race load can be slow on cold-started Render instances.
+  const timeoutMs = options.timeoutMs ?? 120000;
   const signal = withTimeoutSignal(timeoutMs, options.signal);
 
   const params = new URLSearchParams({

@@ -33,7 +33,7 @@ export default function Home() {
 
     try {
       const data = await fetchOverviewRace(2023, "Bahrain Grand Prix", "Race", {
-        timeoutMs: 30000,
+        timeoutMs: 120000,
         signal: controller.signal,
       });
       setOverview(data);
